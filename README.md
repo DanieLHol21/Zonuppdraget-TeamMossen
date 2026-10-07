@@ -160,8 +160,13 @@ Om du är osäker, fråga först.
 ## De viktigaste kommandona
 
 git clone <repo-url>
+
 git switch -c <branch>
+
 git status
+
 git add .
+
 git commit -m "Beskriv ändringen"
+
 git push -u origin <branch>
