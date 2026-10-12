@@ -1,72 +1,49 @@
-Adressplan
------
-**Interna nätverket och adressområden**
+Tillgångsförteckning
+--------
 
-Det interna nätverket är uppdelat i zoner för att roller ska vara separerade och minska attackytan.
-| Zon | Nätadress | Syfte |
-|----|----|----|
-| Studentzon | 10.0.10.0/24 | Studentservrar |
-| Gemensam zon | 10.0.20.0/24 | DNS, DHCP, AD, gemensamma tjänster |
-| Säkerhetszon | 10.0.30.0/24 | Brandvägg, IDS/IPS |
-| Backupzon | 10.0.40.0/24 | Backup och lagring |
-------
+Denna tillgångsförteckning beskriver labbmiljön som den är i dag.
+Alla servrar, adresser, tjänster och belägg är baserade på faktisk verifiering i labben.
 
-**IP-adresser och DNS-namn för servrar**
 
-Här dokumenteras både studentservrar och gemensamma servrar.
+**Studentservrar**
+| Namn | Roll |	Adress |	Tjänster |	Belägg |
+|----|----|----|----|----|
+| elev-12 |	Studentserver |	172.20.1.112 |	SSH (22), HTTP (80)	| ss -tuln visar port 22 och 80 öppna. curl localhost ger HTTP‑svar. IP är dynamic via DHCP. |
+
 
 **Gemensamma servrar**
-| Server | IP-adress | DNS-namn | Roll |
-|----|----|----|----|
-| dns-01 | 10.0.20.10 | dns.team.local | Namnupplösning |
-| dhcp-01 | 10.0.20.11 | dhcp.team.local | IP-tilldelning |
-| ad-01 | 10.0.20.12 | ad.team.local | Directory Services |
-| firewall-01 | 10.0.30.1 | fw.team.local | Brandvägg/routing |
------
+| Namn |	Roll |	Adress |	Tjänster |	Belägg |
+|---|---|---|---|---|
+| jump |	Bastion/jump-server |	172.20.1.2 |	SSH (22) |	nmap -sV visar port 22 öppen. nslookup ger NXDOMAIN. |
+| ctf |	Övningsserver	| 172.20.1.10	| Inga öppna portar	| nmap -sV visar inga tjänster. nslookup ger NXDOMAIN. |
+| 172.20.1.21	| Okänd server	| 172.20.1.21	| Inga öppna portar	| nmap -sV visar inga tjänster. nslookup ger NXDOMAIN. |
+| log	| Loggserver	| 172.20.1.58	| Inga öppna portar |	nmap -sV visar inga tjänster. nslookup ger NXDOMAIN. |
+-------
 
-**Studentservrar** 
-| Server | IP-adress | DNS-namn | Roll |
-|----|----|----|----|
-| elev01 | 10.0.10.101 | elev01.student.local | Studentserver |
-| elev02 | 10.0.10.102 | elev02.student.local | Studentserver |
-| elev03 | 10.0.10.103 | elev03.student.local | Studentserver |
------
+**DNS och IP-adresser**
+- nslookup på samtliga gemensamma servrar gav NXDOMAIN.
+- DNS-servern saknar A‑poster för dessa IP‑adresser.
+- Detta är en faktisk observation i labbmiljön.
+------
 
-**Hur studentservrarnas IP-adresser tilldelas**
-Studentservrarna får sina IP-adresser via DHCP-servern (dhcp-01).
+**DHCP-tilldelning**
+- Studentservern elev-12 har en dynamisk IP-adress enligt ip a.
+- Detta visar att DHCP används i studentnätet.
+------
 
-Tilldelningen sker genom:
-- Statisk DHCP-reservation baserat på MAC-adress
-- Varje studentserver får en fast IP inom 10.0.10.0/24
-- DHCP-servern hanterar även gateway och DNS-inställningar
-- Exempel:
-
-MAC: 00:16:3e:ab:cd:01
-Tilldelad IP: 10.0.10.101
-DNS: 10.0.20.10
-Gateway: 10.0.10.1
+**Adressplan (verklig labbmiljö)**
+| Zon |	Nätadress |	Syfte |
+|---|---|---|
+| Studentzon |	172.20.1.0/24	| Studentservrar (elev‑00 → elev‑46) |
+| Gemensam zon |	172.20.1.0/24 |	Jump, CTF, Loggserver, okänd server |
+| Extern/NAT | 2.x.x.x (eth0)	| Utgående trafik från studentservrar |
 
 
-**Hur DNS och IP-adresser hänger ihop**
-
-DNS-servern (dns-01) hanterar zonerna:
-- team.local (gemensamma server)
-- student.local (studentservrar)
-
-Varje server har: 
-- A-post > DNS-namn > IP-adress
-- PTR-post > IP-adress > DNS-namn (omvänd)
-- Exempel:
-
-A-post: web01.student.local → 10.0.10.5
-PTR-post: 10.0.10.5 → web01.student.local
-
-DNS används för:
-- Namnuppslagning mellan servrar
-- Loggning och spårbarhet
-- Automatisering och konfigurationshantering
-----
-
-
-
-
+**Att verifiera i labben**
+| Kontrollpunkt | Kommando |	Förväntat resultat |
+|----|----|----|
+| DNS‑uppslag	| nslookup "server" | DNS‑post (saknas idag) |
+| DHCP‑tilldelning |	ip a |	Adress markerad som dynamic |
+| Jump‑server SSH	| ssh 172.20.1.2 |	Inloggningsprompt |
+| Loggserver | telnet 172.20.1.58 514	| Eventuellt syslog‑svar |
+| Brandväggsregler | sudo iptables -L	| Tillåter SSH/HTTP |
