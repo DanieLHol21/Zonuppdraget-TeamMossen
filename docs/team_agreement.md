@@ -1,4 +1,4 @@
-# Teamöverenskommelse - Team Mossen
+# Teamöverenskommelse - Team Mössen
 
 ## 1. Kommunikation & Möten
 - **Huvudkanal:** Slack för daglig kontakt och av stäming från alla.
