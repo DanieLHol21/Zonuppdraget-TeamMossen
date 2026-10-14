@@ -1,49 +1,46 @@
-Tillgångsförteckning
---------
+# Adressplan och tillgångsförteckning
 
-Denna tillgångsförteckning beskriver labbmiljön som den är i dag.
-Alla servrar, adresser, tjänster och belägg är baserade på faktisk verifiering i labben.
+Labbmiljön undersökt i min studentserver. Alla uppgifter kommer från kommandon som jag körde själv, och beläggen står i tabellerna. Detta är en tydlig beskrivning av min labbmiljö.
 
+## 1. Nätverk och adressområde
 
-**Studentservrar**
-| Namn | Roll |	Adress |	Tjänster |	Belägg |
-|----|----|----|----|----|
-| elev-12 |	Studentserver |	172.20.1.112 |	SSH (22), HTTP (80)	| ss -tuln visar port 22 och 80 öppna. curl localhost ger HTTP‑svar. IP är dynamic via DHCP. |
+- Internt nät: 172.20.0.0/16 via gateway 172.20.0.1 på eth1. Gatewayen svarar på ping. Belägg: `ip route`, `ping`.
+- Servrarna ligger i 172.20.1.x. Adresserna är /32, så hur nätet är uppdelat i subnät har jag inte verifierat.
+- eth0: 2.28.98.110/32 med default gateway 172.31.1.1. Belägg: `ip a`, `ip route`.
 
+## 2. Servrar
 
-**Gemensamma servrar**
-| Namn |	Roll |	Adress |	Tjänster |	Belägg |
+| Namn | Roll | Adress | Tjänster | Belägg |
 |---|---|---|---|---|
-| jump |	Bastion/jump-server |	172.20.1.2 |	SSH (22) |	nmap -sV visar port 22 öppen. nslookup ger NXDOMAIN. |
-| ctf |	Övningsserver	| 172.20.1.10	| Inga öppna portar	| nmap -sV visar inga tjänster. nslookup ger NXDOMAIN. |
-| 172.20.1.21	| Okänd server	| 172.20.1.21	| Inga öppna portar	| nmap -sV visar inga tjänster. nslookup ger NXDOMAIN. |
-| log	| Loggserver	| 172.20.1.58	| Inga öppna portar |	nmap -sV visar inga tjänster. nslookup ger NXDOMAIN. |
--------
+| elev-12 | Studentserver | 172.20.1.112 (eth1), 2.28.98.110 (eth0) | SSH (22), webbserver (80) | `ss -tuln` visar port 22 och 80, `curl -I http://localhost` ger 200 OK |
+| jump | Jump-server | 172.20.1.2 | SSH (22) | `nmap -sV` visar bara port 22 öppen |
+| ctf | Övningsserver | 172.20.1.10 | SSH (22), webbtjänst (8081) | `nmap -sV` visar port 22 och 8081 öppna, 8081 svarar med HTTP |
+| (namn saknas) | Okänd, kanske övervakning? | 172.20.1.21 | SSH (22), HTTPS (443), HTTPS (9200) | `nmap -sV` visar portarna öppna |
+| log | Loggserver | 172.20.1.58 | SSH (22), webbserver (80), TCP 514 (okänd tjänst) | `nmap -sV` visar port 22, 80 och 514 öppna, UDP 514 är stängd (`nmap -sU`) |
 
-**DNS och IP-adresser**
-- nslookup på samtliga gemensamma servrar gav NXDOMAIN.
-- DNS-servern saknar A‑poster för dessa IP‑adresser.
-- Detta är en faktisk observation i labbmiljön.
-------
+- Alla servrar svarade på `ping`.
+- Brandvägg på elev-12: ingen aktiv (`nft list ruleset` är tomt och `iptables -L` visar inga regler).
+- Jump tar emot SSH-inloggning, men jag fick `Permission denied` eftersom elev-12 saknar SSH-nyckel.
+- elev-00 till elev-46 finns i `/etc/hosts`, men har bara kontrollerat mig själv (elev-12).
 
-**DHCP-tilldelning**
-- Studentservern elev-12 har en dynamisk IP-adress enligt ip a.
-- Detta visar att DHCP används i studentnätet.
-------
+## 3. Hur IP-adresserna tilldelas
 
-**Adressplan (verklig labbmiljö)**
-| Zon |	Nätadress |	Syfte |
-|---|---|---|
-| Studentzon |	172.20.1.0/24	| Studentservrar (elev‑00 → elev‑46) |
-| Gemensam zon |	172.20.1.0/24 |	Jump, CTF, Loggserver, okänd server |
-| Extern/NAT | 2.x.x.x (eth0)	| Utgående trafik från studentservrar |
+- Båda adresserna på elev-12 är markerade `dynamic` i `ip a`, så de tilldelas via DHCP.
+- Jag vet inte vilken DHCP-server som tilldelar dem.
 
+## 4. Hur DNS och IP-adresser hänger ihop
 
-**Att verifiera i labben**
-| Kontrollpunkt | Kommando |	Förväntat resultat |
-|----|----|----|
-| DNS‑uppslag	| nslookup "server" | DNS‑post (saknas idag) |
-| DHCP‑tilldelning |	ip a |	Adress markerad som dynamic |
-| Jump‑server SSH	| ssh 172.20.1.2 |	Inloggningsprompt |
-| Loggserver | telnet 172.20.1.58 514	| Eventuellt syslog‑svar |
-| Brandväggsregler | sudo iptables -L	| Tillåter SSH/HTTP |
+- DNS-servrarna är 185.12.64.1 och 185.12.64.2 (`/etc/resolv.conf`). De gav NXDOMAIN för jump, ctf och log, både för namn och omvända uppslag (`nslookup`).
+- Namnen fungerar ändå via `/etc/hosts` (`getent hosts jump ctf log`). Adressen 172.20.1.21 saknar namn.
+
+## 5. Begränsningar och det som återstår att verifiera
+
+Begränsningar: kontrollerna är gjorda från elev-12. Jag skannade de 1000 vanligaste TCP-portarna och UDP bara på port 514.
+
+| Att verifiera | Hur |
+|---|---|
+| Vad 172.20.1.21 är | Ej verifierat |
+| Vad som körs på TCP 514 på log | Ej verifierat |
+| DNS-zonens domännamn | Ej verifierat |
+| DHCP-server | `nmcli device show eth1` |
+| Internet via eth0 | `ping -c 2 1.1.1.1` |
