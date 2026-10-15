@@ -12,13 +12,13 @@ Jag har undersökt labbmiljön från min egen server, elev-12. Allt nedan har ja
 
 ## 2. Tillgångar
 
-| Namn | Roll | Adress | Tjänster | Klass (förslag) | Subnät | Varför den klassen |
+| Namn | Roll | Adress | Tjänster | Klass | Subnät | Varför den klassen |
 |---|---|---|---|---|---|---|
-| jump | Jump-server, vägen in till labbet | 172.20.1.2 | SSH (22) | Hög | (fylls i) | Den som tar över jump når alla servrar. |
-| log | Loggserver | 172.20.1.58 | SSH (22), HTTP (80), TCP 514 | Hög | (fylls i) | Loggarna är beviset på vem som gjort vad. |
-| wazuh | Säkerhetsövervakning (Wazuh-dashboard) | 172.20.1.21 | SSH (22), HTTPS (443), HTTPS (9200) | Hög | (fylls i) | Den larmar om intrång, så den får inte kunna manipuleras. |
-| elev-12 | Min studentserver | 172.20.1.112 | SSH (22), HTTP (80) | Medel | (fylls i) | Nås från internet utan brandvägg, men har ingen känslig data. |
-| ctf | Övningsserver | 172.20.1.10 | SSH (22), HTTP (8081) | Låg | (fylls i) | Bara en övningsmiljö utan riktig data. |
+| jump | Jump-server, vägen in till labbet | 172.20.1.2 | SSH (22) | (fylls i) | (fylls i) | Den som tar över jump når alla servrar. |
+| log | Loggserver | 172.20.1.58 | SSH (22), HTTP (80), TCP 514 | (fylls i)  | (fylls i) | Loggarna är beviset på vem som gjort vad. |
+| wazuh | Säkerhetsövervakning (Wazuh-dashboard) | 172.20.1.21 | SSH (22), HTTPS (443), HTTPS (9200) | (fylls i)  | (fylls i) | Den larmar om intrång, så den får inte kunna manipuleras. |
+| elev-12 | Min studentserver | 172.20.1.112 | SSH (22), HTTP (80) | (fylls i)  | (fylls i) | Nås från internet utan brandvägg, men har ingen känslig data. |
+| ctf | Övningsserver | 172.20.1.10 | SSH (22), HTTP (8081) | (fylls i)  | (fylls i) | Bara en övningsmiljö utan riktig data. |
 
 Klasserna är förslag som teamet ska bekräfta.
 
