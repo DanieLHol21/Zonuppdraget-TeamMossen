@@ -1,0 +1,42 @@
+# Tillgångar och Klassificering
+
+- Klientdatorer och användarkonton
+	- Subnät: Klienter - 10.40.0.0/24
+	- K: Medel, R: Medel, T: Medel
+	- Skyddsklass: Medel
+	- Motivering: Klientdatorer och användarkonton kan innehålla information som kan ge tillgång till interna system. Kapade konton kan användas för att nå andra delar av nätverket
+- Applikations- och driftservrar
+	- Subnät: Servrar - 10.40.1.64/27
+	- K: Medel, R: Hög, T: Hög
+	- Skyddsklass: Hög
+	- Motivering: Servrarna kör och hanterar viktiga funktioner och möjligtvis data. Driftstopp eller manipulation kan påkerva stora delar av systemet och användarna
+- Företagsdatabas och affärsdata
+	- Subnät: DB - 10.40.1.112/29
+	- K: Hög, R: Hög, T: Hög
+	- Skyddsklass: Hög
+	- Motivering: Databasen kan innehålla viktig företagsinformation så som kundinformation eller orderdata. Driftstopp, manipulation eller informationsläckage kan få allvarliga konsekvenser
+- Central loggserver och säkerhetsloggar
+	- Subnät: Logs - 10.40.1.120/29
+	- K: Hög, R: Hög, T: Medel
+	- Skyddsklass: Hög
+	- Motivering: Loggarna används för att utreda vad som hänt och följa upp aktiviteter. Loggarna kan innehålla känslig data och måste kunna vara åtkomstbar och litbar
+- Adminkonton och verktyg
+	- Subnät: Admin - 10.40.1.96/28
+	- K: Hög, R: Hög, T: Hög
+	- Skyddsklass: Hög
+	- Motivering: Administriva konton har omfattande behörigheter och kan ge en angripare tillgång till att göra ändringar i systemet. Så som att skapa nya behörigheter eller påverka andra system
+- Publika tjänster och DMZ
+	- Subnät: DMZ - 10.40.1.128/29
+	- K: Medel, R: Hög, T: Hög
+	- Skyddsklass: Hög
+	- Motivering: Publika tjänster är exponerade mot internet och kan lättare utsättas för attacker. Driftstopp eller manipulation kan påverka tillgängligheten och säkerheten på tjänsterna
+- Nätverkskonfiguration och säkerhetsregler
+	- Subnät: Admin och routerlänkar
+	- K: Medel, R: Hög, T: Hög
+	- Skyddsklass: Hög
+	- Motivering: Nätverkskonfigurationerna styr hur säkerhetszonerna kommunicerar med varandra. Om reglerna ändras kan zonernas uppdelning kringås eller ge tillgång till obehöriga. Admin måste också ha tillgång till konfigurationerna
+- Gästnät och gästanvändares trafik
+	- Subnät: Gäst - 10.40.1.0/26
+	- K: Låg, R: Låg, T: Medel
+	- Skyddsklass: Medel
+	- Motivering: Gästnätet är för besökare och bör inte innehålla säkerhetskritisk information. Det måste vara isolerat. Och det måste finnas tillgängligt för besökare även om det inte är driftkritiskt
