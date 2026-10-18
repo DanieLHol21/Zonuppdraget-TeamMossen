@@ -1,33 +1,36 @@
-# Tillgångsförteckning
+# Tillgångsförteckning (Asset Inventory)
 
-## Studentservrar
+## 1. Syfte och Omfång
+Denna tillgångsförteckning identifierar och dokumenterar servrar, nätverksenheter, IP-adresser och aktiva tjänster inom projektets miljö. 
 
-Varje student har en egen Linux-server i labbmiljön. Servrarna används för projektets konfiguration, nätverksarbete och säkerhetstester.
+*Obs! Dokumentet skiljer på den befintliga labbmiljön (`172.20.1.0/24`) och den planerade målarkitekturen/adressplanen (`10.40.0.0/16`).*
 
-| Tillgång | Värdnamn | DNS-namn | Intern IP-adress | Ansvarig |
-|---|---|---|---|---|
-| Studentserver | `elev-22` | `elev-22.sec.chas-lab.dev` | `172.20.1.122` | Student 22 |
-| Studentserver | `elev-XX` | `elev-XX.sec.chas-lab.dev` | `172.20.1.(100+XX)` | Student NN |
+---
 
-*Ersätt XX med respektive students nummer och fyll i de faktiska uppgifterna för varje server.*
+## 2. Tillgångar i Labbmiljön (`172.20.1.0/24`)
 
-## Gemensamma servrar
+| Hostnamn / Enhet | IP-adress (Labb) | Tjänst / Roll | Protokoll & Portar | Beskrivning / Anmärkning |
+| :--- | :--- | :--- | :--- | :--- |
+| **Jump-server** | `172.20.1.2` | Bastion Host / SSH Jump | TCP 22 | Central inloggnings- och administrationspunkt för labbmiljön. |
+| **CTF-server / Inlämning** | `172.20.1.10` | Kontroll- & CTF-tjänst | TCP 80, TCP 22 | Server för kontroll och inlämning av flaggor/uppgifter. |
+| **Student-server (Elev-25)** | `172.20.1.137` | Klient / Webbservis-node | TCP 22, TCP 80 | Elevinstans som kör lokala tjänster och kommunicerar med jump-servern. |
+| **Labbnätverk (Subnät)** | `172.20.1.0/24` | Labbgruppsnätverk | Blandat | Internt delat nätverk för laboratorium. |
 
-| Tillgång | Värdnamn | DNS-namn | Intern IP-adress | Funktion |
-|---|---|---|---|---|
-| Jump-server | `jump` | `jump.sec.chas-lab.dev` | `172.20.1.2` | SSH-åtkomst till studentservrarna |
-| Loggserver | `log` | `log.sec.chas-lab.dev` | `172.20.1.58` | Central logginsamling |
-| CTF-server | `ctf` | `ctf.sec.chas-lab.dev` | `172.20.1.10` | Mottagning av flaggor |
+---
 
-## Verifiering
+## 3. Mappning mot Ny Adressplan (`10.40.0.0/16`)
 
-Varje student verifierar sin egen server med följande kommandon:
+Inför zonmodellering och mikrosegmentering mappas systemens roll över till det nya valda adressutrymmet enligt casedirektivet:
 
-```bash
-hostname
-ip -br addr
-ip route
-sudo ss -tulpn
-```
+| Roll / Zontillhörighet | Nytt Adressutrymme (Exempel) | Tillåtna Tjänster / Portar | Klassificering |
+| :--- | :--- | :--- | :--- |
+| **Management / Jump** | `10.40.10.0/24` | SSH (TCP 22) | Hög / Kritiskt adminstöd |
+| **Webb / Tjänster** | `10.40.20.0/24` | HTTP (TCP 80), HTTPS (TCP 443) | Medel / Publik/Intern tjänst |
+| **Internt / Kontroll** | `10.40.30.0/24` | Specifika kontrollportar | Hög / Intern styrning |
 
-Uppgifterna dokumenteras utifrån kommandoutdata och labbinstruktionerna. Ej verifierade uppgifter markeras som preliminära.
+---
+
+## 4. Ägandeskap och Underhåll
+- **Ansvarig:** Person 4 (Tillgångsförteckning & Trafikbaslinje)
+- **Status:** Verifierad mot trafikfångster och uppdragsbeskrivning.
+- **Senast uppdaterad:** Oktober 2026
