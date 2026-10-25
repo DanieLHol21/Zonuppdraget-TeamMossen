@@ -1,13 +1,13 @@
-# Zonmodell – milstolpe 2 (uppdaterad inför milstolpe 3)
+# Zonmodell – milstolpe 3
 
-Underlag: `docs/adressplan.md`, tillgångsförteckningen (vecka 1) och teamets klassificering. Skiss: `diagrams/zonskiss.png`.
+Underlag: `docs/adressplan.md`, tillgångsförteckningen (vecka 1), teamets klassificering, trafikbaslinjen (`docs/Trafiksbaslinje.md`) och markeringstabellen (`docs/markeringstabell.md`). Skiss: `diagrams/zonskiss.png`. Flödestabell: `docs/flodestabell.md`.
 
 ## Förutsättningar
 
 - Modellen visar **målbilden**. I dag är labbnätet platt och alla servrar når varandra.
 - Subnäten är hämtade oförändrade från adressplanen (10.40.0.0/16, endast IPv4). Labbadresser (172.20.x.x) står bara i tillgångsförteckningen.
 - All trafik mellan zoner går genom **brandväggen/routern** (ansluten via Transit), där flödesreglerna tillämpas.
-- **Zero Trust:** allt som inte står i flödestabellen nekas – **inkommande och utgående**. Plats i nätet ger ingen tillit.
+- **Zero Trust:** allt som inte står i flödestabellen nekas – **inkommande och utgående, både i molnbrandväggen och på värden**. Plats i nätet ger ingen tillit.
 - **Klass:** varje zon bedöms på **K**onfidentialitet (obehöriga ser), **R**iktighet (data ändras) och **T**illgänglighet (går inte att nå). Skyddsklassen är det högsta av de tre.
 - *Planerad* = zon utan tillgångar i labbet än. Flöden där är teamets antagande.
 
@@ -19,67 +19,53 @@ Underlag: `docs/adressplan.md`, tillgångsförteckningen (vecka 1) och teamets k
 | log | Hög | Loggarna bevisar vem som gjort vad och måste gå att lita på. | Logg (10.40.1.120/29) |
 | wazuh | Hög | Manipuleras den syns inga angrepp. | Logg (10.40.1.120/29) |
 | elevservrar (elev-NN) | Hög | Exponerade mot internet – driftstopp eller manipulation syns direkt. | DMZ (10.40.1.128/29) |
-| ctf | – | Kursens labbserver, ingår inte i uppdragsgivarens miljö. Får bara köra labbkontroller (F13). | Utanför |
+| ctf | – | Kursens labbserver, ingår inte i uppdragsgivarens miljö. Får bara köra labbkontroller (F13a–b). | Utanför |
 
 ## 2. Zoner
 
 | Zon | Subnät | K / R / T | Klass | Syfte | Får nås av |
 |---|---|---|---|---|---|
-| **DMZ** | 10.40.1.128/29 | M / H / H | Hög | Publika tjänster | Internet, Klient (HTTP), jump (SSH), ctf (SSH) |
+| **DMZ** | 10.40.1.128/29 | M / H / H | Hög | Publika tjänster | Internet (HTTP), Klient (HTTP), jump (SSH, ICMP), ctf (SSH, HTTP) |
 | **Admin** | 10.40.1.96/28 | H / H / H | Hög | Adminkonton och verktyg, enda vägen in | Internet (SSH till jump) |
-| **Logg** | 10.40.1.120/29 | H / H / M | Hög | Central loggning och övervakning | Alla zoner utom Gäst (loggar), jump |
-| **Server** *(planerad)* | 10.40.1.64/27 | M / H / H | Hög | Applikations- och driftservrar | DMZ, jump |
-| **Data** *(planerad)* | 10.40.1.112/29 | H / H / H | Hög | Företagsdatabas och affärsdata | Server, jump |
+| **Logg** | 10.40.1.120/29 | H / H / M | Hög | Central loggning och övervakning | Alla zoner utom Gäst (loggar över TLS), jump (SSH, HTTPS, ICMP) |
+| **Server** *(planerad)* | 10.40.1.64/27 | M / H / H | Hög | Applikations- och driftservrar | DMZ (app-port 8080), jump (SSH, ICMP) |
+| **Data** *(planerad)* | 10.40.1.112/29 | H / H / H | Hög | Företagsdatabas och affärsdata | Server (5432), jump (SSH, ICMP) |
 | **Klient** *(planerad)* | 10.40.0.0/24 | M / M / M | Medel | Klientdatorer och användarkonton | Ingen |
 | **Gäst** *(planerad)* | 10.40.1.0/26 | L / L / M | Medel | Besökare, isolerat, bara internet | Ingen |
 | **Transit** | 10.40.1.136–.147 (Länk 1–3) | M / H / H | Hög | Routerlänkar och säkerhetsregler | Endast routrarna (konfigureras från Admin) |
 
 H = hög, M = medel, L = låg.
 
-**Admin och Logg är separata zoner:** loggarna ska vara bevis även mot administratörer, och DB-nätet ligger mellan dem i adressplanen så de kan inte slås ihop till ett prefix.
+**Admin och Logg är separata zoner:** loggarna ska vara bevis även mot administratörer, och DB-nätet ligger mellan dem i adressplanen så de kan inte slås ihop till ett prefix. Loggservern förvaltas därför av ett separat loggadmin-konto.
 
 ## 3. Flöden
 
-Flödestabellen följer mallen i studieguiden för vecka 3. Radnumren (F1–F13) är desamma som i skissen; ett flöde med flera portar har en rad per port (a, b, c).
+Den fullständiga flödestabellen – med källzon, målzon, protokoll, port, riktning, motivering, var flödet filtreras och belägg – finns i **[flodestabell.md](flodestabell.md)**. Översikt per pil i skissen:
 
-- **Riktning** = vem som öppnar anslutningen (skickar första paketet). Svaren släpps som etablerad trafik.
-- **Filtreras var:** molnbrandväggen ser bara publik trafik – flöden inom det privata nätet filtreras bara på värden.
+| Pil | Från → Till | Vad |
+|---|---|---|
+| F1 | Internet → DMZ | Webbplatsen, tcp/80 |
+| F2 | Internet → jump | Enda vägen in, tcp/22 med nyckel |
+| F3 | jump → DMZ | Förvaltning, tcp/22 |
+| F4a–b | jump → log, wazuh | Förvaltning, tcp/22, bara loggadmin-kontot |
+| F5 | jump → wazuh | Larm i dashboarden, tcp/443 |
+| F6a–b | jump → Server, Data | Förvaltning, tcp/22 |
+| F7a–e | Alla zoner utom Gäst → log | Central loggning, tcp/6514 med TLS |
+| F8 | DMZ → Server | Portalen hämtar orderdata, tcp/8080 |
+| F9 | Server → Data | Appen läser och skriver kunddata, tcp/5432 |
+| F10 | Klient → DMZ | Personalen använder webben, tcp/80 |
+| F11a–d | Serverzonerna → Internet | DNS (udp/tcp 53), NTP (udp/123), uppdateringar (tcp/443) |
+| F12a–f | Klient, Gäst → Internet | Surfa: tcp/80, tcp/443, udp/53 |
+| F13a–b | ctf → DMZ | Kursens labbkontroller, tcp/22 och tcp/80 |
+| F14 | jump → DMZ, Logg, Server, Data | Felsökning, ICMP echo |
 
-| Rad | Källzon | Målzon | Protokoll | Port | Riktning | Motivering (verksamhetsfunktion) | Filtreras var | Belägg |
-|---|---|---|---|---|---|---|---|---|
-| F1 | Internet | DMZ (elevservrar) | TCP | 80 | Internet → DMZ | Besökare når webbplatsen. | Molnplattform + värden | `curl` 200 OK |
-| F2 | Internet | Admin (jump) | TCP | 22 | Internet → jump | Administratörer når miljön – enda vägen in, bara nyckelinloggning. | Molnplattform + värden | jump är vägen in |
-| F3 | Admin (jump) | DMZ (elevservrar) | TCP | 22 | jump → DMZ | Förvaltning och uppdatering av elevservrarna. | Värden | `tcpdump`, `Last login from jump` |
-| F4 | Admin (jump) | Logg (log, wazuh) | TCP | 22 | jump → Logg | Förvaltning av logg- och övervakningsservrarna. | Värden | `nmap -sV` |
-| F5 | Admin (jump) | Logg (wazuh) | TCP | 443 | jump → wazuh | Granska och hantera larm i Wazuh-dashboarden. | Värden | `curl -kI` → `/app/login` |
-| F6 | Admin (jump) | Server, Data | TCP | 22 | jump → Server, Data | Förvaltning av interna servrar och databas. | Värden | *planerad* |
-| F7 | Alla zoner utom Gäst | Logg (log) | TCP (TLS) | 6514 | Källa → log | Central loggning – utan den kan vi inte visa vem som gjort vad. | Värden | 6514 öppen på log – verifieras med `nc` |
-| F8 | DMZ | Server | TCP | 8080 | DMZ → Server | Portalen hämtar orderdata för att visa kundens ordrar. | Värden | *planerad* |
-| F9 | Server | Data | TCP | 5432 | Server → Data | Appen läser och skriver kunddata åt portalen. | Värden | *planerad* |
-| F10 | Klient | DMZ | TCP | 80 | Klient → DMZ | Personalen använder webbtjänsten. | Värden | *planerad* |
-| F11a | DMZ, Admin, Logg, Server, Data | Internet (DNS) | UDP | 53 | Server → Internet | Namnuppslag – utan det fungerar inga uppdateringar. | Molnplattform (utgående) + värden | DNS i `/etc/resolv.conf` |
-| F11b | DMZ, Admin, Logg, Server, Data | Internet (NTP) | UDP | 123 | Server → Internet | Rätt tid – loggarnas tidsstämplar måste gå att lita på. | Molnplattform (utgående) + värden | – |
-| F11c | DMZ, Admin, Logg, Server, Data | Internet | TCP | 443 | Server → Internet | Säkerhetsuppdateringar av systemen. | Molnplattform (utgående) + värden | – |
-| F12a | Klient, Gäst | Internet | TCP | 80, 443 | Klient/Gäst → Internet | Personal och besökare surfar. | Molnplattform + värden | *planerad* |
-| F12b | Klient, Gäst | Internet (DNS) | UDP | 53 | Klient/Gäst → Internet | Namnuppslag för surfning. | Molnplattform + värden | *planerad* |
-| F13 | ctf (utanför) | DMZ (elevservrar) | TCP | 22 | ctf → DMZ | Kursens labbkontroller av elevservrarna. | Värden | labbmiljöns krav – teamet bekräftar |
-
-**Sist i tabellen:** ”Allt som inte står ovan är nekat, inkommande och utgående.”
-
-**Exempel på nekat:**
-- **DMZ → Data** – ett intrång på en elevserver når inte databasen.
-- **DMZ → Admin** – en elevserver kan inte nå jump.
-- **elev → elev** – ingen verksamhetsfunktion kräver det.
-- **Gäst → interna zoner** – gäster når bara internet.
-- **Logg → andra zoner** – loggservern tar emot men ansluter aldrig tillbaka.
-- **TCP 514 och 80 på log** – ersätts av TLS på 6514.
-- **TCP 9200 (wazuh)** – nås bara inom Logg-zonen.
-- **Övrig utgående trafik** – t.ex. reverse shell eller exfiltrering stoppas.
+**Nekanderegel:** ”Allt som inte står i flödestabellen är nekat – inkommande och utgående, både i molnbrandväggen och på värden.” Viktigast: DMZ → Data, DMZ → Admin, elev → elev, Data → Internet (utom DNS och NTP), Gäst → interna zoner och Logg → andra zoner.
 
 ## 4. Öppna frågor
 
-- Är TCP 6514 med TLS i drift på log, och kan 514 och 80 stängas? Verifieras med `nc` och `tshark`.
-- Vad körs på TCP 9200 (wazuh)? Troligen Wazuh-indexeraren.
+- Vad körs på TCP 9200 (wazuh)? Troligen Wazuh-indexeraren – ej verifierat.
 - Portarna 8080 och 5432 (F8, F9) är antaganden tills Server och Data finns.
-- Jump har SSH till alla serverzoner (F3, F4, F6) – kan åtkomsten begränsas till de konton som behöver den?
-- Ska F13 (ctf → elev) stå kvar? Bekräftas med teamet.
+- Hur uppdateras Data utan direkt väg till internet – via en intern spegel?
+- F11d går till `mirrors.rockylinux.org`, som anvisar varierande speglar. Hur skrivs regeln exakt i vecka 4?
+- Baslinjen FL-01: öppnar elevservern SSH till jump, eller är det jump som öppnar? Bekräftas med `tshark` (SYN utan ACK).
+- Vilka zoner representeras av teamets servrar i vecka 4, och vilka finns bara på papper? Labbnätet blir 10.40.T.0/24 enligt teamnumret.
