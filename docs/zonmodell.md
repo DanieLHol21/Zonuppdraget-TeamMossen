@@ -67,5 +67,6 @@ Den fullständiga flödestabellen – med källzon, målzon, protokoll, port, ri
 - Portarna 8080 och 5432 (F8, F9) är antaganden tills Server och Data finns.
 - Hur uppdateras Data utan direkt väg till internet – via en intern spegel?
 - F11d går till `mirrors.rockylinux.org`, som anvisar varierande speglar. Hur skrivs regeln exakt i vecka 4?
+- Klient och Gäst (F12c, F12f) använder Hetzners resolvrar 185.12.64.1–.2, som bara fungerar för servrar i Hetzners nät ([källa](https://docs.hetzner.com/dns-console/dns/general/recursive-name-servers)). Flyttar zonerna till ett kontor behövs en annan resolver.
 - Baslinjen FL-01: öppnar elevservern SSH till jump, eller är det jump som öppnar? Bekräftas med `tshark` (SYN utan ACK).
 - Vilka zoner representeras av teamets servrar i vecka 4, och vilka finns bara på papper? Labbnätet blir 10.40.T.0/24 enligt teamnumret.
