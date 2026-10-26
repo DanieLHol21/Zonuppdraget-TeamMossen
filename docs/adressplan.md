@@ -2,7 +2,7 @@
 
 ## Förutsätningar
 
-Adressplanen ska beskriva hur adresser delas upp i subnät.
+Adressplanen ska beskriva hur adresser delas upp i subnät
 
 - Adressutrymme : 10.40.0.0/16
 - Tillväxtmarignal på 25% används
@@ -23,6 +23,20 @@ Adressplanen ska beskriva hur adresser delas upp i subnät.
 | 10.40.1.136/30 | Länk 1 | 10.40.1.137–10.40.1.138 | Routing | / | 2 ändpunkter. /30 ger 2 använbara adresser |
 | 10.40.1.140/30 | Länk 2 | 10.40.1.141–10.40.1.142 | Routing | / | 2 ändpunkter. /30 ger 2 använbara adresser |
 | 10.40.1.144/30 | Länk 3 | 10.40.1.145–10.40.1.146 | Routing | / | 2 ändpunkter. /30 ger 2 använbara adresser |
+
+# Labbimplementation
+
+Labbets privata nätverk är 10.40.6.0/24. Endast zoner med servrar i labbet behöver implementeras som subnät i molnen. Klient och gästzoner finns kvar i den övergripande designen och flödestabellen men ska inte byggas eftersom de inte innhåller några servrar och nätverket är för liten att implementera dem
+
+| Zon | Subnät i labbet | Server/tjänst 
+|---|---|---|
+| Server | 10.40.6.0/27 | Gruppens serverresurser |
+| Admin | 10.40.6.32/28 | Jump/admin server |
+| DB | 10.40.6.48/29 | Databasserver |
+| Logs | 10.40.6.56/29 | Logg/övervaknings server |
+| DMZ | 10.40.6.64/29 | Gruppens DMZ server |
+
+Subnäten ovan är ett förslag på placering inom labbnätet. Kontrollera att de stämmer med serverrollerna och att prefixen följer den ursprungliga adressplanen innan de skapas
 
 # Subnät Beräkningar
 
