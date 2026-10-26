@@ -49,10 +49,10 @@ Flödestabellen följer mallen i studieguiden för vecka 3. Radnumren (F1–F13)
 |---|---|---|---|---|---|---|---|---|
 | F1 | Internet | DMZ (elevservrar) | TCP | 80 | Internet → DMZ | Besökare når webbplatsen. | Molnplattform + värden | `curl` 200 OK |
 | F2 | Internet | Admin (jump) | TCP | 22 | Internet → jump | Administratörer når miljön – enda vägen in, bara nyckelinloggning. | Molnplattform + värden | jump är vägen in |
-| F3 | Admin (jump) | DMZ (elevservrar) | TCP | 22 | jump → DMZ | Förvaltning och uppdatering av elevservrarna. | Värden | `tcpdump`, `Last login from jump` |
-| F4 | Admin (jump) | Logg (log, wazuh) | TCP | 22 | jump → Logg | Förvaltning av logg- och övervakningsservrarna. | Värden | `nmap -sV` |
+| F3 | Admin (jump) | DMZ (elevservrar) | TCP | 22 | jump → DMZ | Administrativ förvaltning av tilldelade elevservrar via SSH från jump. | Värden | `tcpdump`, `Last login from jump` |
+| F4 | Admin (jump) | Logg (log, wazuh) | TCP | 22 | jump → Logg | Förvaltning av logg- och övervakningsservrar via SSH för utsedda administratörer. | Värden | `nmap -sV` |
 | F5 | Admin (jump) | Logg (wazuh) | TCP | 443 | jump → wazuh | Granska och hantera larm i Wazuh-dashboarden. | Värden | `curl -kI` → `/app/login` |
-| F6 | Admin (jump) | Server, Data | TCP | 22 | jump → Server, Data | Förvaltning av interna servrar och databas. | Värden | *planerad* |
+| F6 | Admin (jump) | Server, Data | TCP | 22 | jump → Server, Data | Förvaltning av specificerade interna servrar och databasservrar via SSH för administratörer med motsvarande behörighet. | Värden | *planerad* |
 | F7 | Alla zoner utom Gäst | Logg (log) | TCP (TLS) | 6514 | Källa → log | Central loggning – utan den kan vi inte visa vem som gjort vad. | Värden | 6514 öppen på log – verifieras med `nc` |
 | F8 | DMZ | Server | TCP | 8080 | DMZ → Server | Portalen hämtar orderdata för att visa kundens ordrar. | Värden | *planerad* |
 | F9 | Server | Data | TCP | 5432 | Server → Data | Appen läser och skriver kunddata åt portalen. | Värden | *planerad* |
@@ -75,6 +75,18 @@ Flödestabellen följer mallen i studieguiden för vecka 3. Radnumren (F1–F13)
 - **TCP 514 och 80 på log** – ersätts av TLS på 6514.
 - **TCP 9200 (wazuh)** – nås bara inom Logg-zonen.
 - **Övrig utgående trafik** – t.ex. reverse shell eller exfiltrering stoppas.
+
+### Begränsning av administrativ SSH-åtkomsten
+
+SSH-åtkomst sker via jump-servern i Admin-zonen och begränsas enligt principen om minsta privilegium.
+
+- Systemadministratörer får endast SSH-åtkomst till de elevservrar och interna servrar som de ansvarar för.
+- Logg- och säkerhetsadministratörer får SSH-åtkomst till logg- och övervakningsservrarna när det behövs för deras arbetsuppgifter.
+- Åtkomst till databasservrar begränsas till administratörer med ett dokumenterat behov.
+- Administratörer använder individuella konton och nyckelbaserad autentisering. Behörigheter tilldelas utifrån arbetsuppgifter.
+- SSH-regler begränsas till specifika målservrar där det är möjligt. Att en server kan nås från jump innebär inte automatiskt att alla administratörer har behörighet att logga in.
+
+Rollerna ovan är designantaganden som behöver bekräftas vid implementation. De faktiska behörigheterna ska dokumenteras och konfigureras innan miljön tas i drift.
 
 ## 4. Öppna frågor
 
