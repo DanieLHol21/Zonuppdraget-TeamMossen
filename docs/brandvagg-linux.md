@@ -66,7 +66,7 @@ Reglerna prövas uppifrån och ned, och den första regeln som fattar ett beslut
 | Servern → ctf (t.ex. tcp/8081) | Baslinjen FL-03 stängs | tyst (`ZON-UT-DROP`) |
 | Servern → log tcp/80 | Ingen rad i flödestabellen | tyst (`ZON-UT-DROP`) |
 
-Den första och den fjärde är verifierade (avsnitt 6). Övriga testas av Person 5 (`docs/testresultat.md`).
+Den första, den andra (utgående från elev-12) och den fjärde är verifierade (avsnitt 6). Övriga testas av Person 5 (`docs/testresultat.md`).
 
 ## 4. Installera och ladda regelverket utan att låsa ute sig
 
@@ -107,6 +107,9 @@ Gör så här på en elevserver (fungerar på alla, eftersom filen inte innehål
 | Kursens kontroll | `kontrollera U4.1` på jump | godkänd | policy drop in och ut, startar vid omstart, SSH från 172.20.1.203 → tyst, ut till 172.20.1.10:4445 → stoppad | 26/10 |
 | Omstart | `sudo reboot`, sedan `uptime` och `sudo nft list ruleset` | regelverket laddat | `up 2 min`, `table inet zon … policy drop` | 27/10 |
 | Nätkort efter omstart (D6) | `ip -br addr` | eth0–eth2 har adresser | eth0 2.28.98.110, eth1 172.20.1.112, eth2 10.40.6.4 | 27/10 |
+| Ping från jump (F14) | på jump: `ping -c2 172.20.1.112` | svar | 0 % packet loss | 28/10 |
+| Webb från internet (F1) | från egen dator: `curl -I http://2.28.98.110` | HTTP 200 | `HTTP/1.1 200 OK` – passerar både molnet och värden | 28/10 |
+| Elev → elev nekas (ut) | `ping -c2 10.40.6.3` (teamkamrat) | stoppad | 100 % packet loss; svar först med en tillfällig regel, som sedan togs bort | 28/10 |
 
 Loggningen (loggreglerna, rsyslog och D5) beskrivs och verifieras av Person 4 i `docs/loggning.md`. Kursens kontroll `kontrollera U4.2` är godkänd på elev-12.
 
