@@ -118,6 +118,6 @@ Loggningen (loggreglerna, rsyslog och D5) beskrivs och verifieras av Person 4 i 
 ## 7. Öppna frågor och avvikelser
 
 - **Inget flöde i teamnätet (eth2) är tillåtet än.** De planerade flödena mellan zonerna (F8 DMZ → Server, F9 Server → Data) finns bara på papper. Teamet behöver bestämma vilket flöde som ska implementeras för att testas i workshop 2.
-- **Elevservrarnas adresser i teamnätet** (10.40.6.3–.6) ligger i Gäst-subnätet (10.40.6.0/26) enligt adressplanen, men elevservrarna hör till DMZ (10.40.6.128/29) i zonmodellen. Det påverkar inte reglerna i dag, men måste stämma när regler skrivs för teamnätet.
+- **Elevservrarnas adresser i teamnätet** (10.40.6.3–.6) ligger i Server-subnätet (10.40.6.0/27), men elevservrarna hör till DMZ (10.40.6.64/29) enligt labbimplementationen i adressplanen. Det påverkar inte reglerna i dag, men måste stämma när regler skrivs för teamnätet (Person 1).
 - **F7a (tcp/6514)** är öppnad ut, men rsyslog använder D5 (tcp/514) den här veckan. TLS införs i vecka 5.
 - **Ping mellan teamets servrar** nekas eftersom F14 bara tillåter jump.
