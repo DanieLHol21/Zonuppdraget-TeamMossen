@@ -1,0 +1,12 @@
+default via 172.31.1.1 dev eth0 proto dhcp src 167.233.50.40 metric 100 
+10.40.6.0/24 via 10.40.6.1 dev eth2 proto static 
+10.40.6.1 dev eth2 scope link 
+10.40.211.96/27 dev zon0 proto kernel scope link src 10.40.211.126 
+172.20.0.0/16 via 172.20.0.1 dev eth1 proto static 
+172.20.0.1 dev eth1 scope link 
+172.31.1.1 dev eth0 proto dhcp scope link src 167.233.50.40 metric 100 
+[student@elev-22 ~]$ cat ~/firewall-evidence/nftables-service.txt
+○ nftables.service - Netfilter Tables
+     Loaded: loaded (/usr/lib/systemd/system/nftables.service; enabled; preset: disabled)
+     Active: inactive (dead)
+       Docs: man:nft(8)
