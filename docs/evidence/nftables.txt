@@ -1,0 +1,29 @@
+table inet zon {
+        chain in {
+                type filter hook input priority filter; policy drop;
+                tcp dport 22459 reject with tcp reset comment "U4.5"
+                ip saddr 172.20.1.10 tcp dport 29520 accept comment "U4.5"
+                tcp dport 29510 drop comment "U4.5 allt annat blockerat"
+                ct state established,related accept
+                ct state invalid drop
+                iifname "lo" accept
+                ip saddr 172.20.1.2 tcp dport 22 accept comment "d1 ssh från jump"
+                ip saddr 172.20.1.10 tcp dport 22 accept comment "d2 kontroll från ctf"
+                ip saddr 10.40.6.0/24 ip protocol icmp icmp type echo-request accept comment "Allow ping from team subnet"
+                limit rate 10/minute burst 5 packets log prefix "ZON-IN-DROP " level info
+        }
+
+        chain ut {
+                type filter hook output priority filter; policy drop;
+                ct state established,related accept
+                ct state invalid drop
+                oifname "lo" accept
+                ip daddr { 185.12.64.1, 185.12.64.2 } meta l4proto { tcp, udp } th dport 53 accept comment "d3 dns"
+                udp dport 123 accept comment "d4 ntp"
+                ip daddr 172.20.1.58 tcp dport 514 accept comment "d5 logg"
+                udp sport 68 udp dport 67 accept comment "d6 dhcp"
+                tcp dport 443 accept comment "d7 dnf"
+                ip daddr 10.40.6.0/24 ip protocol icmp icmp type echo-request accept comment "allow ping to team subnet"
+                limit rate 10/minute burst 5 packets log prefix "ZON-UT-DROP" level info
+        }
+}
