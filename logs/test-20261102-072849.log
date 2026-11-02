@@ -1,0 +1,44 @@
+========================================
+ BRANDVÄGGSTEST - LAB-SERVER
+ Datum: Mon Nov  2 07:28:49 AM UTC 2026
+ Server: elev-37
+========================================
+
+========================================
+1. LOKALA NFTABLES-REGLER
+========================================
+[FAIL] F3 - SSH från jump
+       Förväntat: OPEN
+       Faktiskt: BLOCKED
+[PASS] F6 - SSH till intern server
+[SKIP] F8 - Kräver test från DMZ-server
+[FAIL] F9 - Anslutning till databas
+       Förväntat: OPEN
+       Faktiskt: BLOCKED
+[FAIL] F7 - TLS-loggning till loggserver
+       Förväntat: OPEN
+       Faktiskt: BLOCKED
+
+========================================
+2. UTGÅENDE TRAFIK
+========================================
+[PASS] F11a - DNS-uppslagning
+[PASS] F11b - NTP-tidssynkronisering
+[PASS] F11c - HTTPS utgående
+
+========================================
+3. INKOMMANDE TRAFIK
+========================================
+[INFO] SSH-tjänsten är aktiv
+[PASS] F3-LOCAL - Jump tillåten i INPUT-regeln
+[PASS] F13 - CTF tillåten i INPUT-regeln
+
+========================================
+4. SAMMANFATTNING
+========================================
+Godkända tester: 6
+Underkända tester: 3
+Ej verifierade tester: 1
+
+Logg sparad i: docs/testresultat/test-20261102-072849.log
+========================================
