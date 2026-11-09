@@ -22,7 +22,7 @@ Trafik som stoppas loggas av loggregler sist i kedjorna, före policy drop: `log
 | | Vecka 4 | Vecka 5 |
 |---|---|---|
 | Fil | `60-brandvagg.conf` | `60-central-loggning.conf` |
-| Urval | `kern.*` (kärnan, bland annat brandväggen) | system, autentisering, brandvägg och audit |
+| Urval | `kern.*` (kärnan, bland annat brandväggen) | system, autentisering, brandvägg, cron och audit |
 | Port | tcp/514, klartext (D5) | tcp/6514, TLS (F7a) |
 | Format | traditionellt (RFC 3164) | RFC 5424 (`RSYSLOG_SyslogProtocol23Format`) |
 | Kö | diskstödd, `fwd_kern`, saveOnShutdown | diskstödd, `fwd_tls`, saveOnShutdown (verifierad med U5.2) |
@@ -34,7 +34,7 @@ Fil i repot: `configs/rsyslog/60-central-loggning.conf` → på servern `/etc/rs
 | Rad | Betyder |
 |---|---|
 | `global(DefaultNetstreamDriverCAFile="/etc/pki/rsyslog/ca.pem")` | CA:n vi litar på (ITSX26 labb-CA) |
-| `*.info;mail.none;cron.none` | urvalet: info och allvarligare, utom mail och cron |
+| `*.info;mail.none` | urvalet: info och allvarligare, utom mail |
 | `target="172.20.1.58" port="6514" protocol="tcp"` | loggservern, TLS-porten (RFC 5425), TLS kräver TCP |
 | `template="RSYSLOG_SyslogProtocol23Format"` | RFC 5424: år, delsekunder och tidszon i tidsstämpeln |
 | `StreamDriver="gtls" StreamDriverMode="1"` | TLS på (`0` = klartext) |
@@ -44,7 +44,9 @@ Fil i repot: `configs/rsyslog/60-central-loggning.conf` → på servern `/etc/rs
 | `queue.saveOnShutdown="on"` | kön sparas vid omstart |
 | `action.resumeRetryCount="-1"` | ge aldrig upp |
 
-**Urval:** just nu används studieguidens minimiurval: system, autentisering (authpriv) och brandväggen (kern). Auditposter från auditd kommer med via `audisp-syslog` (user.info). Urvalet justeras när `docs/logging/loggurval.md` (person 1 och 2) är klart.
+**Urval:** enligt `docs/logging/loggurval.md` (person 1 och 2) skickas system (`messages`), autentisering (authpriv, `secure`), brandväggen (kern), cron och auditd (via `audisp-syslog`, user.info). Journalen räknas inte som en egen källa, eftersom rsyslog läser samma händelser ur den. Mail skickas inte, eftersom servern inte har någon mailtjänst.
+
+**dnf.log** skrivs direkt till fil av dnf och går inte via syslog. För att skicka den behövs `imfile`, och på Rocky 9 kan SELinux hindra rsyslog från att läsa filer i `/var/log` (samma som med `audit.log`). Den gäller drift (fråga 5), inte säkerhet, och skickas därför inte centralt i den här versionen. Den finns kvar lokalt i cirka 5 veckor (logrotate, weekly + rotate 4). Beslutet stäms av med person 2.
 
 ## Så sätter du upp det på din server
 
@@ -96,6 +98,8 @@ Ordning: **tid → flöde → vidarebefordran → testhändelse**. Alla kommando
 | Autentisering | `TLS | … elev-12 sudo[25413] student : … COMMAND=/usr/bin/touch …` |
 | Audit (U5.3) | `TLS | … elev-12 audisp-syslog[25384] type=EXECVE …` |
 | Brandvägg | `TLS | … elev-12 kernel ZON-IN-DROP IN=eth1 … SRC=172.20.1.2 … DPT=4444 … SYN` |
+| Cron | `TLS | 2026-11-09T08:33:29.560421+00:00 … elev-12 cronprov[2276] cronprov elev-12 0833` (efter att `cron.none` togs bort) |
+| Efter omstart (9/11) | rsyslog, nftables och auditd `enabled`, rsyslog `active`, regler för 6514 och 123 kvar. Testhändelsen `omstartstest elev-12 0716` kom fram över TLS 43 s efter tidsstämpeln (ny TLS-anslutning efter start). |
 | Kön (U5.2) | händelse under blockering + två omstarter kom fram 461 s senare |
 
 Detaljer och belägg: `docs/logging/verifiering-loggning.md` och `docs/logging/loggskydd.md` (person 4).
@@ -105,5 +109,5 @@ Detaljer och belägg: `docs/logging/verifiering-loggning.md` och `docs/logging/l
 - **Flödestabellen:** D5 (tcp/514 till log) behövs inte längre när alla servrar skickar över TLS. Ändra tabellen först och ta sedan bort regeln i `zon.nft`.
 - **CA-hämtningen** görs via jump, så vi behöver inget nytt flöde för port 80. Det ska noteras i flödestabellen som ett beslut.
 - **Kön** har ingen egen diskgräns (`queue.maxDiskSpace`), utan delar disk med `/`. Förslag: sätt en gräns, till exempel `1g`.
-- **Urvalet** justeras när `docs/logging/loggurval.md` är klart.
+- **dnf.log:** skickas inte centralt i den här versionen (se Urval). Stäms av med person 2.
 - Person 5 kontrollerar att alla servrar har samma konfiguration, till exempel med `sudo md5sum /etc/rsyslog.d/60-central-loggning.conf`.
