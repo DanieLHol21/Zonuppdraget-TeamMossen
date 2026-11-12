@@ -94,6 +94,7 @@ Båda är per query-monitorer med extraction query mot `wazuh-archives-*`, schem
 | Detektion | Händelse | Tid händelse (sv tid) | Larm start | Larm slut | Fördröjning | Resultat |
 |---|---|---|---|---|---|---|
 | 2b UT | På elev-12: `timeout 3 bash -c '</dev/tcp/1.1.1.1/4444'` → returkod 124 | 2026-11-11 09:30 | 09:31 | 09:35 (Completed) | ≈ 1 min | ✅ larmade, severity 2 |
+| 2a IN | Från jump: `timeout 3 bash -c '</dev/tcp/172.20.1.112/4444'` × 3 → 124, 124, 124 | 2026-11-12 11:16 | 11:16 | – (Active vid kontroll 11:17) | < 1 min | ✅ larmade, severity 3 |
 
 Larmet blev Completed av sig självt när händelsen hade lämnat 5-minutersfönstret.
 
@@ -122,7 +123,7 @@ Larmet blev Completed av sig självt när händelsen hade lämnat 5-minutersfön
 - [x] Trösklar med motivering
 - [x] Monitorer skapade och provkörda
 - [x] Framkallat test 2b (09:30 → larm 09:31)
-- [ ] Framkallat test 2a i par
+- [x] Framkallat test 2a (12/11 11:16 → larm 11:16)
 - [x] Falsklarmsrisk
 - [x] Playbook: `playbooks/D2-brandvagg-drops.md`
 - [ ] Korstest av playbooken (person 3)
