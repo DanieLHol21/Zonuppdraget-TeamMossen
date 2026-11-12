@@ -44,17 +44,19 @@ Reglerna prövas uppifrån och ned, och den första regeln som fattar ett beslut
 | Ordning | Regel (villkor → beslut) | Rad i flödestabellen | Varför |
 |---|---|---|---|
 | 1 | `ct state established,related` → accept | – | Svar till dem som anslutit till servern (t.ex. SSH, webb). |
-| 2 | `oif "lo"` → accept | – | Loopback. |
-| 3 | `ip daddr { 185.12.64.1, 185.12.64.2 } tcp/udp dport 53` → accept | F11a–b (D3) | Namnuppslag mot Hetzners resolvrar. |
-| 4 | `oif "eth0" udp dport 123` → accept | F11c (D4) | Tidssynkronisering (chrony). |
-| 5 | `oif "eth0" tcp dport 443` → accept | F11d (D7) | Paketuppdateringar (dnf) över https. |
-| 6 | `ip daddr 172.20.1.58 tcp dport 514` → accept | D5 | Brandväggsloggen till loggservern (rsyslog, klartext vecka 4). |
-| 7 | `ip daddr 172.20.1.58 tcp dport 6514` → accept | F7a | Loggar till loggservern över TLS (används från vecka 5). |
+| 2 | `ct state invalid` → drop | – | Paket som inte hör till någon giltig anslutning, t.ex. sena svar till skannrar (tillagd 9/11). |
+| 3 | `oif "lo"` → accept | – | Loopback. |
+| 4 | `ip daddr { 185.12.64.1, 185.12.64.2 } tcp/udp dport 53` → accept | F11a–b (D3) | Namnuppslag mot Hetzners resolvrar. |
+| 5 | `oif "eth0" ip daddr { 213.239.239.164, 213.239.239.165, 213.239.239.166 } udp dport 123` → accept | F11c (D4) | Tidssynkronisering (chrony), bara mot Hetzners tre tidsservrar. |
+| 6 | `oif "eth0" tcp dport 443` → accept | F11d (D7) | Paketuppdateringar (dnf) över https. |
+| 7 | `ip daddr 172.20.1.58 tcp dport 6514` → accept | F7a | Loggar till loggservern över TLS. |
 | 8 | `udp sport 68 udp dport 67` → accept | D6 | Förnyelse av serverns DHCP-adresser. |
 | 9 | `limit rate 10/minute log prefix "ZON-UT-DROP "` | – (loggning, Person 4) | Loggar stoppad utgående trafik. |
+
+**D5 (tcp/514 till loggservern) är borttagen 2026-11-12.** Den behövdes bara i vecka 4, när rsyslog skickade i klartext. Sedan vecka 5 går alla loggar över TLS (F7a). Före borttagningen kontrollerades att rsyslog bara använder 6514 (`ss -tnp`, `/etc/rsyslog.d/60-central-loggning.conf`).
 | – | `policy drop` | Nekanderegeln | Allt annat utgående stoppas, t.ex. reverse shell eller exfiltrering. |
 
-**F11c och F11d** skrivs mot internet (alla adresser) eftersom ntp.hetzner.com och Rocky Linux-speglarna saknar fasta IP-adresser. Reglerna är ändå begränsade till en port och till eth0 (beslut i flödestabellen).
+**F11c** är låst till Hetzners tre tidsservrar (213.239.239.164–166), samma adresser som i molnbrandväggen. **F11d** skrivs mot internet (alla adresser) eftersom Rocky Linux-speglarna saknar fasta IP-adresser. Den är ändå begränsad till en port och till eth0 (beslut i flödestabellen).
 
 ### Exempel på vad som nekas
 
@@ -110,8 +112,13 @@ Gör så här på en elevserver (fungerar på alla, eftersom filen inte innehål
 | Ping från jump (F14) | på jump: `ping -c2 172.20.1.112` | svar | 0 % packet loss | 28/10 |
 | Webb från internet (F1) | från egen dator: `curl -I http://2.28.98.110` | HTTP 200 | `HTTP/1.1 200 OK` – passerar både molnet och värden | 28/10 |
 | Elev → elev nekas (ut) | `ping -c2 10.40.6.3` (teamkamrat) | stoppad | 100 % packet loss; svar först med en tillfällig regel, som sedan togs bort | 28/10 |
+| D5 borttagen | `sudo nft list ruleset \| grep 514` | bara 6514 | bara F7a (6514); `logger`-test syns i Wazuh | 12/11 |
+| Utgående + regelkontroll | `scripts/test-firewall.sh` på elev-12 | alla godkända | 14 av 14 godkända (bl.a. 514 och 4444 ut → stoppade) | 12/11 |
+| Inkommande | `scripts/test-firewall-in.sh` på jump | alla godkända | 4 av 4 godkända (F3, F14, port 80 och 4444 från jump → stoppade) | 12/11 |
 
-Loggningen (loggreglerna, rsyslog och D5) beskrivs och verifieras av Person 4 i `docs/loggning.md`. Kursens kontroll `kontrollera U4.2` är godkänd på elev-12.
+Hela testprotokollet: `docs/testresultat/brandvaggstest-2026-11-12.md`.
+
+Loggningen (loggreglerna och rsyslog över TLS) beskrivs och verifieras av Person 4 i `docs/loggning.md`. Kursens kontroll `kontrollera U4.2` är godkänd på elev-12.
 
 **Lärdom från testerna:** ett test från servern mot sin egen adress går via `lo` och träffar aldrig filtret. Det gav *avvisad* (RST från kärnan) i stället för *tyst*. Tester av inkommande regler måste därför köras från en annan server, t.ex. jump.
 
@@ -119,5 +126,5 @@ Loggningen (loggreglerna, rsyslog och D5) beskrivs och verifieras av Person 4 i 
 
 - **Inget flöde i teamnätet (eth2) är tillåtet än.** De planerade flödena mellan zonerna (F8 DMZ → Server, F9 Server → Data) finns bara på papper. Teamet behöver bestämma vilket flöde som ska implementeras för att testas i workshop 2.
 - **Elevservrarnas adresser i teamnätet** (10.40.6.3–.6) ligger i Server-subnätet (10.40.6.0/27), men elevservrarna hör till DMZ (10.40.6.64/29) enligt labbimplementationen i adressplanen. Det påverkar inte reglerna i dag, men måste stämma när regler skrivs för teamnätet (Person 1).
-- **F7a (tcp/6514)** är öppnad ut, men rsyslog använder D5 (tcp/514) den här veckan. TLS införs i vecka 5.
+- ~~**F7a (tcp/6514)** är öppnad ut, men rsyslog använder D5 (tcp/514) den här veckan.~~ **Löst:** TLS (6514) används sedan vecka 5, och D5 är borttagen 12/11.
 - **Ping mellan teamets servrar** nekas eftersom F14 bara tillåter jump.
