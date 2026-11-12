@@ -1,55 +1,49 @@
-
 #!/usr/bin/env bash
 
 # =====================================================
-# Firewall tester - Lab-server
-# Testar nftables och molnbrandväggens trafikflöden
+# Brandväggstest – elev-12 (körs PÅ elev-12)
+# Testar UTGÅENDE trafik + att reglerna finns i zon.nft.
+# Inkommande trafik testas med test-firewall-in.sh
+# FRÅN jump och ctf (en server kan inte testa sin
+# egen inkommande trafik inifrån).
+#
+# OBS: de blockerade testerna ger ZON-UT-DROP med SYN
+# och larmar alltså T1571 (2b). Det är förväntat –
+# triagera som framkallat test.
 # =====================================================
 
 set -u
 
-# Målservrar
-JUMP="172.20.1.2"
-CTF="172.20.1.10"
-LOG="10.40.6.58"
-WAZUH="10.40.6.58"
-SERVER="10.40.6.3"
-DB="10.40.6.50"
+# Adresser
+LOG="172.20.1.58"        # loggserver (rättat, var 10.40.6.58)
+SERVER="10.40.6.3"       # teamets interna server
+DB="10.40.6.50"          # teamets databas
 
 # Loggfil
-mkdir -p docs/testresultat
-LOGFILE="docs/testresultat/test-$(date +%Y%m%d-%H%M%S).log"
+LOGDIR="$HOME/scripts/testresultat"
+mkdir -p "$LOGDIR"
+LOGFILE="$LOGDIR/test-ut-$(date +%Y%m%d-%H%M%S).log"
 
 PASS=0
 FAIL=0
 SKIP=0
 
-# Testresultat
 exec > >(tee -a "$LOGFILE") 2>&1
 
 echo "========================================"
-echo " BRANDVÄGGSTEST - LAB-SERVER"
+echo " BRANDVÄGGSTEST UT – $(hostname)"
 echo " Datum: $(date)"
-echo " Server: $(hostname)"
 echo "========================================"
 
-# -----------------------------------------------------
-# Funktioner
-# -----------------------------------------------------
-
 result() {
-    local id="$1"
-    local description="$2"
-    local expected="$3"
-    local actual="$4"
-
+    local id="$1" description="$2" expected="$3" actual="$4"
     if [[ "$expected" == "$actual" ]]; then
-        echo "[PASS] $id - $description"
+        echo "[PASS] $id - $description ($actual)"
         ((PASS+=1))
     else
         echo "[FAIL] $id - $description"
         echo "       Förväntat: $expected"
-        echo "       Faktiskt: $actual"
+        echo "       Faktiskt:  $actual"
         ((FAIL+=1))
     fi
 }
@@ -60,141 +54,84 @@ skip() {
 }
 
 tcp_test() {
-    local id="$1"
-    local description="$2"
-    local host="$3"
-    local port="$4"
-    local expected="$5"
-
-    if timeout 4 bash -c \
-        "echo >/dev/tcp/$host/$port" 2>/dev/null; then
+    local id="$1" description="$2" host="$3" port="$4" expected="$5"
+    if timeout 4 bash -c "echo >/dev/tcp/$host/$port" 2>/dev/null; then
         actual="OPEN"
     else
         actual="BLOCKED"
     fi
-
     result "$id" "$description" "$expected" "$actual"
 }
 
-udp_test() {
-    local id="$1"
-    local description="$2"
-    local host="$3"
-    local port="$4"
-
-    if ! command -v nc >/dev/null 2>&1; then
-        skip "$id" "nc saknas"
-        return
-    fi
-
-    # UDP utan svar kan inte säkert skilja
-    # en öppen port från en filtrerad port.
-    if nc -z -u -w 3 "$host" "$port" 2>/dev/null; then
-        echo "[INFO] $id - UDP-probe skickad, resultat ej verifierat"
-        ((SKIP+=1))
+nft_has() {
+    # Kollar att en regel finns i laddade regler
+    local id="$1" description="$2" chain="$3" pattern="$4"
+    if sudo nft list chain inet zon "$chain" | grep -q "$pattern"; then
+        result "$id" "$description" "FINNS" "FINNS"
     else
-        echo "[INFO] $id - UDP-probe gav inget bekräftat svar"
-        ((SKIP+=1))
+        result "$id" "$description" "FINNS" "SAKNAS"
     fi
 }
 
 echo
-echo "========================================"
-echo "1. LOKALA NFTABLES-REGLER"
-echo "========================================"
+echo "1. TILLÅTET UT (ska vara OPEN)"
+echo "----------------------------------------"
 
-# F3 - SSH från jump
-tcp_test "F3" "SSH från jump" "$JUMP" 22 "OPEN"
+tcp_test "F7a" "TLS-loggning till loggserver 6514" "$LOG" 6514 "OPEN"
 
-# F6 - SSH till intern server
-tcp_test "F6" "SSH till intern server" "$SERVER" 22 "OPEN"
-
-# F8 - DMZ till server, port 8080
-# Kräver att testet körs från DMZ.
-skip "F8" "Kräver test från DMZ-server"
-
-# F9 - Server till databas
-# Kräver separat DB-server.
-tcp_test "F9" "Anslutning till databas" "$DB" 5432 "OPEN"
-
-# F7 - TLS-loggning
-tcp_test "F7" "TLS-loggning till loggserver" "$LOG" 6514 "OPEN"
-
-echo
-echo "========================================"
-echo "2. UTGÅENDE TRAFIK"
-echo "========================================"
-
-# F11a - DNS
 if getent hosts example.com >/dev/null 2>&1; then
-    result "F11a" "DNS-uppslagning" "OPEN" "OPEN"
+    result "F11a-b" "DNS-uppslagning" "OPEN" "OPEN"
 else
-    result "F11a" "DNS-uppslagning" "OPEN" "BLOCKED"
+    result "F11a-b" "DNS-uppslagning" "OPEN" "BLOCKED"
 fi
 
-# F11b - NTP
-if command -v timedatectl >/dev/null 2>&1; then
-    if timedatectl show -p NTPSynchronized --value |
-        grep -q '^yes$'; then
-        result "F11b" "NTP-tidssynkronisering" "OPEN" "OPEN"
-    else
-        result "F11b" "NTP-tidssynkronisering" "OPEN" "BLOCKED"
-    fi
+if timedatectl show -p NTPSynchronized --value 2>/dev/null | grep -q '^yes$'; then
+    result "F11c" "NTP synkad" "OPEN" "OPEN"
 else
-    skip "F11b" "timedatectl saknas"
+    result "F11c" "NTP synkad" "OPEN" "BLOCKED"
 fi
 
-# F11c - HTTPS
-if curl -sSIL --connect-timeout 5 https://example.com \
-    >/dev/null 2>&1; then
-    result "F11c" "HTTPS utgående" "OPEN" "OPEN"
+if curl -sSI --connect-timeout 5 https://example.com >/dev/null 2>&1; then
+    result "F11d" "HTTPS ut (443)" "OPEN" "OPEN"
 else
-    result "F11c" "HTTPS utgående" "OPEN" "BLOCKED"
+    result "F11d" "HTTPS ut (443)" "OPEN" "BLOCKED"
+fi
+
+echo
+echo "2. INTE TILLÅTET UT (ska vara BLOCKED)"
+echo "----------------------------------------"
+
+tcp_test "NEG-D5"  "Gamla D5: tcp 514 till loggserver (borttagen 12/11)" "$LOG" 514 "BLOCKED"
+tcp_test "NEG-4444" "Okänd port ut, 1.1.1.1:4444 (T1571)" "1.1.1.1" 4444 "BLOCKED"
+tcp_test "NEG-80"  "HTTP ut, 1.1.1.1:80 (bara 443 tillåtet)" "1.1.1.1" 80 "BLOCKED"
+
+# Teamnätet: reglerna F6/F9 är inte införda i zon.nft än
+# (tas upp med teamet mån 16/11). Därför BLOCKED just nu.
+tcp_test "F6-ej-infört" "SSH till teamets server (ingen regel än)" "$SERVER" 22 "BLOCKED"
+tcp_test "F9-ej-infört" "Databas 5432 (ingen regel än)" "$DB" 5432 "BLOCKED"
+
+echo
+echo "3. REGLERNA FINNS I zon.nft"
+echo "----------------------------------------"
+
+nft_has "F3"   "SSH in från jump"        in  'ip saddr 172.20.1.2 tcp dport 22 accept'
+nft_has "F13a" "SSH in från ctf"         in  'ip saddr 172.20.1.10 tcp dport 22 accept'
+nft_has "F1"   "HTTP in via eth0"        in  'tcp dport 80 accept'
+nft_has "F7a"  "TLS-loggning ut 6514"    ut  'tcp dport 6514 accept'
+
+if sudo nft list chain inet zon ut | grep -q 'dport 514 accept'; then
+    result "NEG-D5-regel" "D5 (514) ska vara borta" "BORTA" "FINNS"
+else
+    result "NEG-D5-regel" "D5 (514) ska vara borta" "BORTA" "BORTA"
 fi
 
 echo
 echo "========================================"
-echo "3. INKOMMANDE TRAFIK"
+echo "Godkända:  $PASS"
+echo "Underkända: $FAIL"
+echo "Ej testade: $SKIP"
+echo "Inkommande: kör test-firewall-in.sh från jump och ctf"
+echo "Logg: $LOGFILE"
 echo "========================================"
 
-# Kontrollera lokal SSH-tjänst
-if systemctl is-active --quiet sshd; then
-    echo "[INFO] SSH-tjänsten är aktiv"
-else
-    echo "[INFO] SSH-tjänsten är inte aktiv"
-fi
-
-# Kontrollera att endast tillåtna källor finns
-# i nftables-reglerna för SSH.
-if sudo nft list chain inet zon in |
-    grep -q 'ip saddr 172.20.1.2 tcp dport 22 accept'; then
-    result "F3-LOCAL" "Jump tillåten i INPUT-regeln" "OPEN" "OPEN"
-else
-    result "F3-LOCAL" "Jump tillåten i INPUT-regeln" "OPEN" "BLOCKED"
-fi
-
-if sudo nft list chain inet zon in |
-    grep -q 'ip saddr 172.20.1.10 tcp dport 22 accept'; then
-    result "F13" "CTF tillåten i INPUT-regeln" "OPEN" "OPEN"
-else
-    result "F13" "CTF tillåten i INPUT-regeln" "OPEN" "BLOCKED"
-fi
-
-echo
-echo "========================================"
-echo "4. SAMMANFATTNING"
-echo "========================================"
-
-echo "Godkända tester: $PASS"
-echo "Underkända tester: $FAIL"
-echo "Ej verifierade tester: $SKIP"
-echo
-echo "Logg sparad i: $LOGFILE"
-
-echo "========================================"
-
-if (( FAIL > 0 )); then
-    exit 1
-else
-    exit 0
-fi
+(( FAIL > 0 )) && exit 1 || exit 0
