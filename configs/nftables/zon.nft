@@ -17,11 +17,11 @@ table inet zon {
     chain ut {
         type filter hook output priority 0; policy drop;
         ct state established,related accept
+        ct state invalid drop
         oif "lo" accept
         ip daddr { 185.12.64.1, 185.12.64.2 } meta l4proto { tcp, udp } th dport 53 accept comment "F11a-b DNS (D3)"
-        oif "eth0" udp dport 123 accept comment "F11c NTP (D4)"
+        oif "eth0" ip daddr { 213.239.239.164, 213.239.239.165, 213.239.239.166 } udp dport 123 accept comment "F11c NTP (D4)"
         oif "eth0" tcp dport 443 accept comment "F11d uppdateringar (D7)"
-        ip daddr 172.20.1.58 tcp dport 514 accept comment "D5 brandväggslogg till log"
         ip daddr 172.20.1.58 tcp dport 6514 accept comment "F7a loggar till log TLS"
         udp sport 68 udp dport 67 accept comment "D6 DHCP"
         limit rate 10/minute log prefix "ZON-UT-DROP " level info
