@@ -1,6 +1,8 @@
 # Testfallslista – elev-12
 
-Testfallen i `testfall.csv` är skrivna **innan** testerna körs (workshop 2, 29/10). Id:t pekar på raden i `docs/flodestabell.md`: `-till` ska släppas igenom, `-nek` ska stoppas.
+Testfallen i `testfall.csv` är skrivna **innan** testerna körs (workshop 2, 29/10). Id:t pekar på raden i `docs/network/zonmodell.md` (avsnitt 3, flödestabellen): `-till` ska släppas igenom, `-nek` ska stoppas.
+
+**Uppdaterad 19/11 (vecka 7):** D5 togs bort 12/11, så D5-till blev **D5-bort** (514 ska nu vara stängd). Ny rad F13c (ctf → tcp/7512) gav testfallet **F13c-nek**.
 
 - **Riktning:** in eller ut, sett från servern vars regel testas (elev-12).
 - **Källa:** där testet körs. `jump` körs på jump, `elev-12` på elev-12, `kamrat` på en teamkamrats server i teamnätet och `egen-dator` med `curl` från internet.
@@ -12,11 +14,13 @@ Testfallen i `testfall.csv` är skrivna **innan** testerna körs (workshop 2, 29
 |---|---|---|
 | F3-till, F14-till | oppen | Regel F3 (SSH) och F14 (ping) släpper in från jump 172.20.1.2 |
 | F3-nek, F1-nek, Nek-in | tyst | Ingen regel för porten från jump på eth1 → `policy drop` i kedjan in, utan svar |
+| F13c-nek | tyst | F13c släpper bara in ctf 172.20.1.10 på tcp/7512 – från jump stoppas det av `policy drop` |
 | F1-till | oppen | Webb från internet in på eth0 – passerar molnet (regel F1) och värden (`iif "eth0"`) |
-| F11b-till, F11d-till, D5-till, F7a-till | oppen | Utgående regler finns; mottagaren lyssnar |
+| F11b-till, F11d-till, F7a-till | oppen | Utgående regler finns; mottagaren lyssnar |
 | F11b-nek | tyst | DNS bara till Hetzners resolvrar – 8.8.8.8 stoppas i kedjan ut |
 | F11d-nek | tyst | Bara tcp/443 ut mot internet – tcp/80 stoppas |
-| D5-nek, F7a-nek | tyst | Mot log släpps bara 514 och 6514 – 80 och 22 stoppas i kedjan ut |
+| D5-bort | tyst | D5 (tcp/514) är borttagen 12/11 – loggarna går bara över TLS (F7a) |
+| D5-nek, F7a-nek | tyst | Mot log släpps bara 6514 – 80 och 22 stoppas i kedjan ut |
 | FL03-nek | tyst | Baslinjens FL-03 (elev → ctf) är stängd |
 | Team-nek-ut | tyst | Elev → elev i teamnätet nekas – stoppas i kedjan ut på elev-12 |
 | Team-nek-in, F14-nek | tyst | Elev → elev nekas – stoppas i kedjan in på elev-12 (ping bara från jump) |
@@ -29,6 +33,6 @@ Testfallen i `testfall.csv` är skrivna **innan** testerna körs (workshop 2, 29
 |---|---|---|
 | F11a (DNS udp), F11c (NTP udp) | Skriptet provar TCP-anslutningar; UDP har ingen handskakning | `getent hosts mirrors.rockylinux.org` och `chronyc burst 1/1; chronyc sources` |
 | D6 (DHCP) | UDP, och syns först när lånet förnyas | `ip -br addr` efter omstart – alla nätkort har adress |
-| F13a, F13b | Källan är ctf, som vi inte kan köra skript på | Kursens kontroll (`kontrollera U4.1`) loggar in från ctf |
+| F13a, F13b, F13c | Källan är ctf, som vi inte kan köra skript på | Kursens kontroller: `kontrollera U4.1` (F13a), `kontrollera U7.2` (F13b), `kontrollera U7.3` (F13c) |
 | F2, F4a, F4b, F5, F7b | Reglerna ligger på kursens servrar (jump, log, wazuh), inte på elev-12 | – (ej vår server) |
 | F6a, F6b, F7c–e, F8, F9, F10, F12a–f | Zonerna finns inte i labbet | – (planerad) |

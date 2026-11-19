@@ -19,13 +19,13 @@ Underlag: `docs/adressplan.md`, tillgångsförteckningen (vecka 1) och teamets k
 | log | Hög | Loggarna bevisar vem som gjort vad och måste gå att lita på. | Logg (10.40.1.120/29) |
 | wazuh | Hög | Manipuleras den syns inga angrepp. | Logg (10.40.1.120/29) |
 | elevservrar (elev-NN) | Hög | Exponerade mot internet – driftstopp eller manipulation syns direkt. | DMZ (10.40.1.128/29) |
-| ctf | – | Kursens labbserver, ingår inte i uppdragsgivarens miljö. Får bara köra labbkontroller (F13). | Utanför |
+| ctf | – | Kursens labbserver, ingår inte i uppdragsgivarens miljö. Får bara köra labbkontroller (F13a–c). | Utanför |
 
 ## 2. Zoner
 
 | Zon | Subnät | K / R / T | Klass | Syfte | Får nås av |
 |---|---|---|---|---|---|
-| **DMZ** | 10.40.1.128/29 | M / H / H | Hög | Publika tjänster | Internet, Klient (HTTP), jump (SSH), ctf (SSH) |
+| **DMZ** | 10.40.1.128/29 | M / H / H | Hög | Publika tjänster | Internet, Klient (HTTP), jump (SSH), ctf (SSH, HTTP, zonvakt) |
 | **Admin** | 10.40.1.96/28 | H / H / H | Hög | Adminkonton och verktyg, enda vägen in | Internet (SSH till jump) |
 | **Logg** | 10.40.1.120/29 | H / H / M | Hög | Central loggning och övervakning | Alla zoner utom Gäst (loggar), jump |
 | **Server** *(planerad)* | 10.40.1.64/27 | M / H / H | Hög | Applikations- och driftservrar | DMZ, jump |
@@ -40,7 +40,7 @@ H = hög, M = medel, L = låg.
 
 ## 3. Flöden
 
-Flödestabellen följer mallen i studieguiden för vecka 3. Radnumren (F1–F13) är desamma som i skissen; ett flöde med flera portar har en rad per port (a, b, c).
+Flödestabellen följer mallen i studieguiden för vecka 3. Radnumren (F1–F13) är desamma som i skissen; F13 är uppdelad i F13a–c (vecka 7); ett flöde med flera portar har en rad per port (a, b, c).
 
 - **Riktning** = vem som öppnar anslutningen (skickar första paketet). Svaren släpps som etablerad trafik.
 - **Filtreras var:** molnbrandväggen ser bara publik trafik – flöden inom det privata nätet filtreras bara på värden.
@@ -62,7 +62,9 @@ Flödestabellen följer mallen i studieguiden för vecka 3. Radnumren (F1–F13)
 | F11c | DMZ, Admin, Logg, Server, Data | Internet | TCP | 443 | Server → Internet | Säkerhetsuppdateringar av systemen. | Molnplattform (utgående) + värden | – |
 | F12a | Klient, Gäst | Internet | TCP | 80, 443 | Klient/Gäst → Internet | Personal och besökare surfar. | Molnplattform + värden | *planerad* |
 | F12b | Klient, Gäst | Internet (DNS) | UDP | 53 | Klient/Gäst → Internet | Namnuppslag för surfning. | Molnplattform + värden | *planerad* |
-| F13 | ctf (utanför) | DMZ (elevservrar) | TCP | 22 | ctf → DMZ | Kursens labbkontroller av elevservrarna. | Värden | labbmiljöns krav – teamet bekräftar |
+| F13a | ctf (utanför) | DMZ (elevservrar) | TCP | 22 | ctf → DMZ | Kursens labbkontroller av elevservrarna. | Värden | `kontrollera U4.1` loggar in från ctf |
+| F13b | ctf (utanför) | DMZ (elevservrar) | TCP | 80 | ctf → DMZ | Kursens webbkontroll (U7.2 hämtar kvittot via httpd). | Värden | `kontrollera U7.2` |
+| F13c | ctf (utanför) | DMZ (elevservrar) | TCP | 7500 + elevnummer (elev-12: 7512) | ctf → DMZ | Kursens kontroll av zonvakt, tjänsten under egen SELinux-policy (U7.3). | Värden | `kontrollera U7.3`; från jump → tyst |
 
 **Sist i tabellen:** ”Allt som inte står ovan är nekat, inkommande och utgående.”
 
@@ -94,4 +96,5 @@ Rollerna ovan är designantaganden som behöver bekräftas vid implementation. D
 - Vad körs på TCP 9200 (wazuh)? Troligen Wazuh-indexeraren.
 - Portarna 8080 och 5432 (F8, F9) är antaganden tills Server och Data finns.
 - Jump har SSH till alla serverzoner (F3, F4, F6) – kan åtkomsten begränsas till de konton som behöver den?
-- Ska F13 (ctf → elev) stå kvar? Bekräftas med teamet.
+- Ska F13a–c (ctf → elev) stå kvar efter kursen? De finns bara för labbkontrollerna.
+- Numreringen i tabellen skiljer sig från `zon.nft` (t.ex. NTP är F11b här men F11c i `zon.nft`, och F14 ping från jump saknas här). Teamet bestämmer hur de synkas.

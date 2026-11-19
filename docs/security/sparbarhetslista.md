@@ -1,6 +1,6 @@
 # Spårbarhetslista – från flödestabell till regel
 
-Listan visar vilken regel som hör till vilken rad i flödestabellen (`docs/flodestabell.md`), i vilket lager den ligger och om den är testad. Mallen kommer från studieguiden för vecka 4.
+Listan visar vilken regel som hör till vilken rad i flödestabellen (`docs/network/zonmodell.md`, avsnitt 3), i vilket lager den ligger och om den är testad. Mallen kommer från studieguiden för vecka 4.
 
 - **Riktning** = in eller ut, sett från servern där regeln ligger.
 - **Lager:** *värd* = nftables på elevservern (`configs/nftables/zon.nft`) · *moln* = Hetzners molnbrandvägg (`moln brandvägg regel lista`).
@@ -8,7 +8,7 @@ Listan visar vilken regel som hör till vilken rad i flödestabellen (`docs/flod
 - **Status:** *planerad* = inte byggd · *implementerad* = regeln finns · *verifierad* = ett test visar att den fungerar.
 - **Server:** elev-12 (eth0 2.28.98.110, eth1 172.20.1.112, eth2 10.40.6.4). Regelfilen är densamma på teamets alla elevservrar.
 
-Senast uppdaterad: 28 oktober 2026.
+Senast uppdaterad: 19 november 2026 (F13c tillagd, F13b verifierad, D5 borttagen).
 
 ## 1. Regler som är byggda
 
@@ -19,7 +19,8 @@ Senast uppdaterad: 28 oktober 2026.
 | F3 (D1) | in | jump 172.20.1.2 | elevservern (eth1) | tcp/22 | värd | `"F3 SSH från jump (D1)"` | nej | verifierad – ny inloggning via jump efter laddning och efter omstart |
 | F13a (D2) | in | ctf 172.20.1.10 | elevservern (eth1) | tcp/22 | värd | `"F13a kontroll från ctf (D2)"` | nej | verifierad – `kontrollera U4.1` loggar in från ctf |
 | F1 | in | internet (eth0) | elevservern, publik adress | tcp/80 | värd | `"F1 webb från internet"` | nej | verifierad – `curl -I http://2.28.98.110` från egen dator via internet → HTTP/1.1 200 OK |
-| F13b | in | ctf 172.20.1.10 | elevservern (eth1) | tcp/80 | värd | `"F13b webbkontroll från ctf"` | nej | implementerad |
+| F13b | in | ctf 172.20.1.10 | elevservern (eth1) | tcp/80 | värd | `"F13b webbkontroll från ctf"` | nej | verifierad – `kontrollera U7.2`: ctf hämtar /zon/kvitto.txt (17/11) |
+| F13c | in | ctf 172.20.1.10 | elevservern (eth1) | tcp/7512 (7500 + elevnummer) | värd | `"F13c zonvaktkontroll från ctf (U7.3)"` | nej | verifierad – `kontrollera U7.3`: ctf når zonvakt (17/11); från jump → tyst (`test-firewall-in.sh`) |
 | F14 | in | jump 172.20.1.2 | elevservern (eth1) | icmp echo-request | värd | `"F14 ping från jump"` | nej | verifierad – `ping -c2 172.20.1.112` från jump → 0 % packet loss |
 | Nekanderegel | in | alla övriga | elevservern | alla | värd | `"ZON-IN-DROP "` (loggregel) + `policy drop` | **ja** | verifierad – SSH från 172.20.1.203 → tyst (`kontrollera U4.1`); nekad rad framme på log (`kontrollera U4.2`) |
 
@@ -30,8 +31,8 @@ Senast uppdaterad: 28 oktober 2026.
 | F11a–b (D3) | ut | elevservern | 185.12.64.1, 185.12.64.2 | udp/53, tcp/53 | värd | `"F11a-b DNS (D3)"` | nej | verifierad – `getent hosts mirrors.rockylinux.org` svarar |
 | F11c (D4) | ut | elevservern | internet via eth0 | udp/123 | värd | `"F11c NTP (D4)"` | nej | verifierad – `chronyc burst` → LastRx 5 s |
 | F11d (D7) | ut | elevservern | internet via eth0 | tcp/443 | värd | `"F11d uppdateringar (D7)"` | nej | verifierad – `curl -sI https://mirrors.rockylinux.org` → HTTP/2 302 |
-| D5 | ut | elevservern | log 172.20.1.58 | tcp/514 | värd | `"D5 brandväggslogg till log"` | nej | verifierad – `ss -tn` → ESTAB :514; `kontrollera U4.2` |
-| F7a | ut | elevservern | log 172.20.1.58 | tcp/6514 | värd | `"F7a loggar till log TLS"` | nej | implementerad – TLS används från vecka 5 |
+| ~~D5~~ | ut | elevservern | log 172.20.1.58 | tcp/514 | värd | – | – | **borttagen 12/11** – ersatt av F7a (TLS 6514). Kontroll före: `ss -tnp` visade bara :6514. Test efter: tcp/514 ut → tyst. |
+| F7a | ut | elevservern | log 172.20.1.58 | tcp/6514 | värd | `"F7a loggar till log TLS"` | nej | verifierad – loggar når Wazuh över TLS (vecka 5–7) |
 | D6 | ut | elevservern | DHCP-servern: 172.31.1.1 (eth0), 172.20.0.1 (eth1), 10.40.6.1 (eth2) | udp 68 → 67 | värd | `"D6 DHCP"` | nej | implementerad – syns först när lånet (24 h) förnyas |
 | Nekanderegel | ut | elevservern | alla övriga | alla | värd | `"ZON-UT-DROP "` (loggregel) + `policy drop` | **ja** | verifierad – ut till ctf 172.20.1.10:8081 → tyst (124); ping till teamkamrat 10.40.6.3 → stoppad; `kontrollera U4.1` |
 

@@ -1,0 +1,91 @@
+HÄRDNINGSRAPPORT – elev-12 (utkast)
+
+SAMMANFATTNING
+
+1. Rapporten gäller servern elev-12 (Rocky Linux 9, SELinux targeted). Rrezart Binaku härdade den under workshop 1, vecka 7, den 17/11 2026.
+2. Fem åtgärder genomfördes: SELinux i tvingande läge, ett paketfilter med policy drop in och ut, en auditd-regel för root-kommandon, en bestående fcontext-regel för /srv/zonwebb och en egen SELinux-domän för zonvakt.
+3. Efter omstart gav skriptet verifiera-hardning GÄLLER på alla 8 kontroller och slutkod 0.
+4. Tre SSH-inställningar ändrades medvetet inte och står kvar som risker: root-inloggning med nyckel, lösenordsinloggning och X11-vidarebefordran.
+
+SELINUX-LÄGE
+
+5. sestatus visar SELinux status "enabled" och Loaded policy name "targeted".
+6. Current mode och Mode from config file är båda "enforcing".
+7. sestatus visar också Policy MLS status "enabled", Policy deny_unknown status "allowed" och Memory protection checking "actual (secure)".
+8. Underlaget visar inte om sestatus kördes före eller efter omstarten. [SAKNAS I UNDERLAGET]
+
+HÄRDNINGSÅTGÄRDER
+
+Åtgärd 1 – SELinux enforcing
+9. Åtgärd: SELinux ska vara i tvingande läge både nu och efter omstart.
+10. Motivering: En tjänst som tas över får annars göra allt som dess användare får, även som root. MAC begränsar skadan.
+11. Effekt: getenforce ger Enforcing och /etc/selinux/config innehåller SELINUX=enforcing.
+12. Verifiering: Kontrollerna "SELinux i tvingande läge nu" och "SELinux enforcing efter omstart" gav GÄLLER. sestatus visar samma sak.
+
+Åtgärd 2 – Paketfilter med policy drop
+13. Åtgärd: Tabellen inet zon har kedjorna in och ut, båda med policy drop.
+14. Motivering: Utan filter når andra zoner allt som råkar lyssna, och skadlig kod kan ringa hem fritt. Bara flödena i flödestabellen ska vara öppna.
+15. Effekt: Kedjorna in och ut har policy drop.
+16. Verifiering: Kontrollerna "paketfiltret: policy drop in" och "paketfiltret: policy drop ut" gav GÄLLER.
+17. Hela regeluppsättningen och flödestabellen finns inte med, så det går inte att se vilka flöden som är öppna. Det går till exempel inte att se om port 7512 är öppen. [SAKNAS I UNDERLAGET]
+
+Åtgärd 3 – auditd loggar root-kommandon
+18. Åtgärd: Det finns en auditd-regel med nyckeln rootkommando.
+19. Motivering: En administratör eller angripare med sudo ska inte kunna göra saker utan att det lämnar spår.
+20. Effekt: Regeln finns i auditd.
+21. Verifiering: Kontrollen "auditd loggar root-kommandon" gav GÄLLER efter omstart (auditctl -l innehåller rootkommando).
+22. Regelns exakta innehåll visas inte. [SAKNAS I UNDERLAGET]
+23. Enligt härdningslistan skickas loggen till loggservern, men varken konfigurationen eller något test av det visas. [SAKNAS I UNDERLAGET]
+
+Åtgärd 4 – Bestående fcontext för /srv/zonwebb
+24. Åtgärd: Det finns en lokal fcontext-regel /srv/zonwebb(/.*)? som ger typen httpd_sys_content_t.
+25. Motivering: httpd ska bara få läsa webbinnehåll. En typ som sätts med chcon försvinner vid en relabel, och då slutar sidan fungera.
+26. Effekt: semanage fcontext -l -C visar regeln, och ls -Z visar att kvitto.txt har typen httpd_sys_content_t.
+27. httpd kör i domänen httpd_t enligt ps -eZ.
+28. zonwebb.conf kopplar Alias /zon/ till /srv/zonwebb/ med "Require all granted".
+29. Verifiering: Kontrollen "/srv/zonwebb har bestående fcontext-regel" gav GÄLLER. Skriptet kontrollerar bara att regeln finns, inte vilken typ filerna faktiskt har.
+30. Inget test visar att httpd faktiskt levererar innehållet, till exempel ett anrop mot /zon/kvitto.txt. [SAKNAS I UNDERLAGET]
+
+Åtgärd 5 – zonvakt i egen domän
+31. Åtgärd: zonvakt kör i en egen tvingande domän, zonvakt_t.
+32. Motivering: Enligt härdningslistan kör zonvakt som root. I unconfined_service_t skulle den kunna skriva i /etc om den togs över.
+33. Att zonvakt kör som root visas inte i serverutdata, eftersom ps -eZ inte visar användaren. [SAKNAS I UNDERLAGET]
+34. Effekt: ps -eZ visar system_u:system_r:zonvakt_t:s0 för processen zonvakt (PID 998). semanage permissive -l | grep zonvakt ger inget svar.
+35. Verifiering: Kontrollerna "zonvakt kör i egen domän zonvakt_t" och "zonvakt-domänen är inte permissiv" gav GÄLLER.
+36. Den förväntade effekten att "overtrad nekas" har inget test och ingen AVC-post som visar den. Det beskrivs inte heller vad "overtrad" är. [SAKNAS I UNDERLAGET]
+
+ZONVAKT UNDER EGEN POLICY
+
+37. semodule -l visar att modulen zonvakt är laddad. Policyn deklarerar version 1.0.0.
+38. Policyn deklarerar zonvakt_t och zonvakt_exec_t via init_daemon_domain, och zonvakt_log_t som loggfiltyp via logging_log_file.
+39. Filkontexterna sätter /usr/local/bin/zonvakt till zonvakt_exec_t och /var/log/zonvakt(/.*)? till zonvakt_log_t.
+40. ls -Z visar att /usr/local/bin/zonvakt har zonvakt_exec_t och att /var/log/zonvakt/zonvakt.log har zonvakt_log_t.
+41. Grundreglerna ger zonvakt: egna fifo- och unix_stream-socketar; rätt att hantera kataloger, filer och länkar av typen zonvakt_log_t, med filtransition i loggkatalogen; domain_use_interactive_fds; files_read_etc_files; miscfiles_read_localization.
+42. Policytexten nämner /etc bara genom files_read_etc_files, alltså läsrätt.
+43. Följande regler lades till efter granskning av audit2allow (vecka 7): tcp_socket, corenet_tcp_bind_generic_node, corenet_tcp_bind_generic_port, corecmd_mmap_bin_files, auth_read_passwd_file, sssd_read_public_files och sssd_search_lib.
+44. Utdata från audit2allow och motiveringen för varje tillagd regel finns inte med. [SAKNAS I UNDERLAGET]
+45. Policyn har ingen egen porttyp för 7512 och använder corenet_tcp_bind_generic_port. Inget semanage port-kommando för 7512 finns i underlaget. Domänen är alltså inte knuten till just port 7512.
+46. Policyn innehåller ingen permissive-sats för zonvakt_t.
+47. ss -tlnp visar att zonvakt lyssnar på 0.0.0.0:7512, det vill säga på alla IPv4-adresser.
+48. Inventeringen kl. 13.00 listade bara httpd (80) och sshd (22), inte zonvakt. Varför zonvakt saknas där framgår inte. [SAKNAS I UNDERLAGET]
+49. systemd-enheten som startar zonvakt visas inte. [SAKNAS I UNDERLAGET]
+
+VERIFIERING EFTER OMSTART
+
+50. Skriptet kördes efter omstart (U7.5) och gav GÄLLER på alla 8 kontroller och slutkod 0.
+51. Enligt sin kommentar läser skriptet bara av och ändrar ingenting. Det sätter slutkod 1 om någon kontroll misslyckas.
+52. De 8 kontrollerna fördelar sig så här: åtgärd 1 två kontroller, åtgärd 2 två, åtgärd 3 en, åtgärd 4 en och åtgärd 5 två.
+53. Kontrollerna visar att inställningar finns (policy drop, regelnyckel, fcontext-regel, domännamn, ej permissiv). De testar inte funktionen: vilka flöden som är öppna, att övertramp nekas eller vilken typ filerna har.
+54. Underlaget visar inte vilka av de övriga utdata (sestatus, ps, ls, ss) som togs efter omstarten. [SAKNAS I UNDERLAGET]
+
+KVARSTÅENDE RISKER
+
+55. SSH tillåter root-inloggning med nyckel (permitrootlogin without-password).
+56. SSH tillåter lösenordsinloggning (passwordauthentication yes).
+57. SSH har X11-vidarebefordran påslagen (x11forwarding yes), som bedöms som onödig.
+58. Planen är att först stänga av X11 och sedan stänga av root- och lösenordsinloggning. Det senare görs först när det är klart att varken Rrezart eller ctf loggar in så, och testas med en andra SSH-session öppen.
+59. SSH-värdena kommer från inventeringen kl. 13.00. Ingen senare sshd -T finns med. [SAKNAS I UNDERLAGET]
+60. zonvakt lyssnar på alla IPv4-adresser på port 7512, och det framgår inte om paketfiltret begränsar den porten. [SAKNAS I UNDERLAGET]
+61. zonvakt_t får binda generiska portar i stället för en egen porttyp (se 45).
+62. Ingen genomgång av AVC-nekanden (till exempel med ausearch) finns med. Därför går det inte att visa att zonvakt fungerar utan nekanden eller att övertramp faktiskt nekas. [SAKNAS I UNDERLAGET]
+63. Att audit-loggen når loggservern är inte verifierat (se 23).

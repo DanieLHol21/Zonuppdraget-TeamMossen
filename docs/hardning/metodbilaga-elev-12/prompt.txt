@@ -1,0 +1,14 @@
+Du ska hjälpa mig skriva ett utkast till en härdningsrapport för min server.
+
+System: Rocky Linux 9 med SELinux (targeted-policy). Tjänsten zonvakt är en liten Python-tjänst som lyssnar på TCP-port 7512 och har fått en egen SELinux-policymodul.
+
+Regler:
+1. Håll dig strikt till underlaget nedan. Hitta inte på filer, kommandon, inställningar eller resultat.
+2. Skriv rapporten som numrerade påståenden, ett påstående per rad (1, 2, 3 …).
+3. Om något inte går att belägga med underlaget, skriv [SAKNAS I UNDERLAGET] efter påståendet.
+4. Rapporten ska ha rubrikerna: Sammanfattning, SELinux-läge, Härdningsåtgärder (åtgärd, motivering, effekt, verifiering), zonvakt under egen policy, Verifiering efter omstart, Kvarstående risker.
+5. Skriv på svenska.
+
+Maskerade värden i underlaget är markerade med IP-INTERN-BORTTAGEN.
+
+UNDERLAG

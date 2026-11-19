@@ -11,6 +11,7 @@ table inet zon {
         ip saddr 172.20.1.10 tcp dport 22 accept comment "F13a kontroll från ctf (D2)"
         iif "eth0" tcp dport 80 accept comment "F1 webb från internet"
         ip saddr 172.20.1.10 tcp dport 80 accept comment "F13b webbkontroll från ctf"
+        ip saddr 172.20.1.10 tcp dport 7512 accept comment "F13c zonvaktkontroll från ctf (U7.3)"
         ip saddr 172.20.1.2 icmp type echo-request accept comment "F14 ping från jump"
         limit rate 10/minute log prefix "ZON-IN-DROP " level info
     }
