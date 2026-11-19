@@ -68,10 +68,12 @@ case "$(hostname)" in
     ping_test "F14"     "Ping från jump"                        "OPEN"
     tcp_test  "NEG-80"  "HTTP från jump (bara eth0/ctf)"   80   "BLOCKED"
     tcp_test  "NEG-4444" "Okänd port 4444 (T1046)"         4444 "BLOCKED"
+    tcp_test  "F13c-nek" "zonvakt från jump (bara ctf)"    7512 "BLOCKED"
     ;;
   *ctf*)
     tcp_test  "F13a"    "SSH från ctf"                     22   "OPEN"
     tcp_test  "F13b"    "HTTP från ctf"                    80   "OPEN"
+    tcp_test  "F13c"    "zonvakt från ctf"                 7512 "OPEN"
     ping_test "NEG-ping" "Ping från ctf (bara jump)"            "BLOCKED"
     tcp_test  "NEG-4444" "Okänd port 4444 (T1046)"         4444 "BLOCKED"
     ;;
