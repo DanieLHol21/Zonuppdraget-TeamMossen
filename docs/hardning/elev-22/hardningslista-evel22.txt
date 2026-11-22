@@ -1,0 +1,67 @@
+Härdningsrapport – elev-22
+
+1. SELinux i enforcing-läge
+
+Åtgärd:
+SELinux har verifierats och konfigurerats att använda läget enforcing.
+
+Effekt:
+SELinux tillämpar säkerhetspolicyn och blockerar åtgärder som inte tillåts av policyn. Inställningen i /etc/selinux/config gör att enforcing-läget används även efter omstart.
+
+Verifiering:
+
+getenforce visade Enforcing.
+
+sestatus visade att både aktuellt läge och konfigurerat läge är enforcing.
+
+grep '^SELINUX=' /etc/selinux/config visade SELINUX=enforcing.
+
+2. Zonvakt med egen SELinux-policy
+
+Åtgärd:
+Zonvakt körs i den egna SELinux-domänen zonvakt_t. En egen policy har skapats med tillhörande filer zonvakt.te och zonvakt.fc.
+
+Effekt:
+Tjänsten omfattas av en separat SELinux-policy med definierade behörigheter. Detta begränsar vilka åtgärder tjänsten får utföra enligt policyn.
+
+Verifiering:
+
+ps -eZ | grep zonvakt visade att processen körs i zonvakt_t.
+
+sudo semodule -l | grep zonvakt visade att modulen är installerad.
+
+sudo semanage permissive -l visade inte zonvakt_t som permissiv domän.
+
+3. Persistent SELinux-kontext för Apache
+
+Åtgärd:
+En persistent SELinux-regel har skapats för /srv/zonwebb/ med typen httpd_sys_content_t. Apache-konfigurationen finns i zonwebb.conf.
+
+Effekt:
+Apache får läsa webbinnehåll i den avsedda katalogen enligt SELinux-policyn. Den permanenta filkontextregeln gör att rätt SELinux-typ kan återställas även efter ommärkning.
+
+Verifiering:
+
+ls -Z /srv/zonwebb visade typen httpd_sys_content_t.
+
+sudo semanage fcontext -l -C visade den permanenta regeln för /srv/zonwebb(/.*)?.
+
+4. Brandvägg
+
+Åtgärd:
+Serverns befintliga brandväggsregler verifieras av skriptet.
+
+Effekt:
+Inkommande trafik begränsas genom en drop-policy. Trafik från CTF-adressen 172.20.1.10 till Zonvakts TCP-port 7522 tillåts enligt den kontrollerade regeln.
+
+Verifiering:
+
+Verifieringsskriptet kontrollerar att kedjan inet zon in har policy drop.
+
+Skriptet kontrollerar att källadressen 172.20.1.10 tillåts till TCP-port 7522.
+
+5. Återkommande verifiering
+
+Skriptet scripts/verifiera-hardning-elev-22.sh kontrollerar ovanstående säkerhetsinställningar utan att ändra serverns konfiguration.
+
+Skriptet kördes efter omstart och samtliga sex kontroller gav resultatet GÄLLER. Skriptets exitkod var 0.
