@@ -1,0 +1,4 @@
+student@elev-22 ~]$ cat ~/zonvakt-policy/zonvakt.fc
+/usr/local/bin/zonvakt          --      gen_context(system_u:object_r:zonvakt_exec_t,s0)
+
+/var/log/zonvakt(/.*)?          gen_context(system_u:object_r:zonvakt_log_t,s0)
