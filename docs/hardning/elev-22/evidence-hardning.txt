@@ -1,0 +1,73 @@
+
+WEEK 7 – HARDENING EVIDENCE
+Server: elev-22
+
+=== SELinux mode ===
+
+Command: getenforce
+
+Output:
+Enforcing
+
+Command: grep '^SELINUX=' /etc/selinux/config
+
+Output:
+SELINUX=enforcing
+
+=== SELinux status ===
+
+Command: sestatus
+
+Relevant output:
+SELinux status:                 enabled
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+
+=== Zonvakt SELinux domain ===
+
+Command: ps -eZ | grep zonvakt
+
+Output:
+system_u:system_r:zonvakt_t:s0 1008 ? 00:00:00 zonvakt
+
+=== Zonvakt policy module ===
+
+Command: sudo semodule -l | grep zonvakt
+
+Output:
+zonvakt
+
+=== Permissive domains ===
+
+Command: sudo semanage permissive -l
+
+Output:
+zonvakt_t was not listed.
+
+=== Apache file context ===
+
+Command: ls -Z /srv/zonwebb
+
+Output:
+unconfined_u:object_r:httpd_sys_content_t:s0 kvitto.txt
+
+Command: sudo semanage fcontext -l -C
+
+Output:
+/srv/zonwebb(/.*)? all files system_u:object_r:httpd_sys_content_t:s0
+
+=== Verification script ===
+
+Command:
+sudo /usr/local/bin/verifiera-hardning
+
+Output:
+GÄLLER SELinux ar i enforcing-lage
+GÄLLER SELinux ar enforcing efter omstart
+GÄLLER Zonvakt kor i egen doman zonvakt_t
+GÄLLER Zonvakt-domanen ar inte permissiv
+GÄLLER Brandvaggen har policy drop for inkommande trafik
+GÄLLER Zonvakt port 7522 tillats fran CTF-adressen
+
+Exit code: 0
