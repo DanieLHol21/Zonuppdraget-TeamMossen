@@ -16,7 +16,7 @@ Vecka 7, workshop 1, 17/11 2026. Tjänst: zonvakt på tcp/7512. Modul: `zonvakt`
 |---|---|---|
 | `allow zonvakt_t self:tcp_socket { accept bind create getattr listen setopt };` | **Ändrad** till `create_stream_socket_perms` | Förslaget saknade read och write. Tjänsten kraschade i tvingande läge med `PermissionError` på `conn.sendall` (journalctl). Nekandet syntes inte i ausearch, troligen dolt av en dontaudit-regel. Makrot ger det en TCP-tjänst behöver för att ta emot och svara. |
 | `corenet_tcp_bind_generic_node(zonvakt_t)` | Med | Tjänsten måste binda till en adress (0.0.0.0). |
-| `corenet_tcp_bind_generic_port(zonvakt_t)` | Med (för bred) | Behövs för att lyssna på 7512, men tillåter alla oreserverade portar. Kan snävas in med en egen porttyp (U7.6). |
+| `corenet_tcp_bind_generic_port(zonvakt_t)` | Med (för bred) – **ersatt i U7.6** | Behövdes för att lyssna på 7512, men tillät alla oreserverade portar. Bytt mot en egen porttyp 20/11 (se nedan). |
 | `corecmd_mmap_bin_files(zonvakt_t)` | Med | Python-tolken måste kunna läsas och mappas. |
 | `auth_read_passwd_file(zonvakt_t)` | Med | Läser användarnamn vid start. Bara läsning. |
 | `sssd_read_public_files(zonvakt_t)` | Med | Uppslag av användare via sssd. Bara läsning. |
@@ -25,6 +25,26 @@ Vecka 7, workshop 1, 17/11 2026. Tjänst: zonvakt på tcp/7512. Modul: `zonvakt`
 | `files_manage_etc_files(zonvakt_t)` | **Aldrig** | Det är själva överträdelsen. En vakttjänst ska inte skriva i /etc. |
 | `auth_etc_filetrans_shadow(zonvakt_t)` | **Aldrig** | Hör till att skapa filer i /etc. Inget tjänsten behöver. |
 | `permissive zonvakt_t;` (genererad) | **Borttagen** | Permissiv domän stoppar inget. Bara för felsökning. |
+
+## U7.6 – egen porttyp (VG, 20/11)
+
+Den generiska portregeln lät zonvakt binda vilken oreserverad port som helst. Jag gjorde policyn snävare.
+
+| Ändring i zonvakt.te | Varför |
+|---|---|
+| **Tillagt:** `type zonvakt_port_t;` och `corenet_port(zonvakt_port_t)` | En egen porttyp bara för zonvakt |
+| **Borttaget:** `corenet_tcp_bind_generic_port(zonvakt_t)` | Tillät alla oreserverade portar |
+| **Tillagt:** `allow zonvakt_t zonvakt_port_t:tcp_socket name_bind;` | zonvakt får bara binda sin egen porttyp |
+
+Port 7512 märktes med `sudo semanage port -a -t zonvakt_port_t -p tcp 7512`.
+
+**Verifiering**
+- `semanage port -l | grep zonvakt` → `zonvakt_port_t tcp 7512`
+- `sesearch -A -s zonvakt_t -c tcp_socket -p name_bind` → bara `allow zonvakt_t zonvakt_port_t:tcp_socket name_bind;`
+- Port 7513 i konfigurationen → tjänsten `failed`, AVC `denied { name_bind } … src=7513 … unreserved_port_t … permissive=0`. Tillbaka till 7512 → `hej` ok, `overtrad` nekad.
+- `kontrollera U7.6` godkänd. `verifiera-hardning` → 8/8 GÄLLER efter ändringen.
+
+**Vad den råa audit2allow-modulen hade tillåtit i onödan:** att binda alla oreserverade portar (`corenet_tcp_bind_generic_port`), att skriva i /etc (`files_manage_etc_files`, `auth_etc_filetrans_shadow`) och att köra andra program (`corecmd_exec_bin`).
 
 ## Brandväggen
 - Ny regel **F13c** i `zon.nft`: `ip saddr 172.20.1.10 tcp dport 7512 accept` – ctf kontrollerar zonvakt (U7.3).
