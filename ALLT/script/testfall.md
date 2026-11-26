@@ -53,11 +53,11 @@ släpps, och bevisar då ingenting.
  
 ## Resultat 2026-11-26
  
-| Körning | Tid (svensk tid) | Resultat | Fil |
+| Körning | Resultat | Fil |
 |---|---|---|---|
-| elev-22 (ut) | ca 12:01 | 7 av 7 som förväntat | resultat-elev-22.csv |
-| jump (in) | ca 12:29 | 4 av 4 som förväntat | resultat-jump.csv |
-| egen dator (F1-till) | – | körs efter att F1 lagts till | – |
+| elev-22 (ut) | 7 av 7 som förväntat | resultat-elev-22.csv |
+| jump (in)  | 4 av 4 som förväntat | resultat-jump.csv |
+| egen dator (F1-till) | körs efter att F1 lagts till | – |
  
 oppen tog 8–16 ms (handskakningen klar direkt), tyst tog ca 3000 ms (timeout utan svar).
  
