@@ -111,3 +111,122 @@ Detaljer och belägg: `docs/logging/verifiering-loggning.md` och `docs/logging/l
 - **Kön** har ingen egen diskgräns (`queue.maxDiskSpace`), utan delar disk med `/`. Förslag: sätt en gräns, till exempel `1g`.
 - **dnf.log:** skickas inte centralt i den här versionen (se Urval). Stäms av med person 2.
 - Person 5 kontrollerar att alla servrar har samma konfiguration, till exempel med `sudo md5sum /etc/rsyslog.d/60-central-loggning.conf`.
+
+# Uppföljning av härdning och SELinux (P3)
+## Syfte
+
+Den centrala loggningen används även för att följa upp säkerhetsåtgärderna i härdningsarbetet. Härdningen omfattar bland annat filkontexter, filbehörigheter och loggfiler.
+
+För SELinux är det viktigt att kunna upptäcka när en process nekas åtkomst till en fil eller katalog. En AVC-händelse (Access Vector Cache) registreras när SELinux nekar en åtkomst. Händelsen kan användas för att upptäcka felaktiga filkontexter eller behörigheter.
+
+## AVC-händelser i Wazuh
+
+AVC-händelser söks fram i Wazuh med följande sökning:
+
+text
+full_log:"type=AVC" AND full_log:"comm=zonvakt"
+
+
+Det är viktigt att söka på comm=zonvakt, eftersom detta identifierar processen som orsakar nekandet. En sökning enbart på SELinux-typen zonvakt_t är inte tillräcklig för denna kontroll.
+
+## Verifiering på elev-37
+
+En sökning inom de senaste sju dagarna gav 48 träffar.
+
+En av träffarna visade följande:
+
+Källa: audisp-syslog
+Wazuh-agent: log
+Agent-IP: 172.20.1.58
+Loggfil: /var/log/remote/elev-37/syslog.log
+Regel-ID: 100200
+Regelbeskrivning: SELinux (AVC): åtkomst nekad
+Regel-nivå: 5
+
+Detta visar att AVC-händelser från elev-37 når den centrala loggservern via audisp-syslog och behandlas av Wazuh.
+
+## Wazuh-regel för SELinux
+
+Kursens egen Wazuh-regel är:
+
+Regel-ID: 100200
+Nivå: 5
+Beskrivning: SELinux (AVC): åtkomst nekad
+
+Standardregeln för SELinux-nekanden ger nivå 2, medan kursens egen regel 100200 ger nivå 5.
+
+I den verifierade händelsen var rule.mail satt till false. Det innebär att ingen automatisk e-postavisering skickas från den aktuella regeln.
+
+Händelserna kan däremot sökas fram och följas upp i Wazuh.
+
+En separat Alerting-monitor kan skapas för att ge aviseringar vid SELinux-nekanden. En sådan monitor är inte verifierad som aktiv. Om den införs behöver även mängden falska eller återkommande larm följas upp för att mäta brusnivån.
+
+## Setroubleshoot
+
+För att kontrollera om mer lättlästa SELinux-felmeddelanden vidarebefordras till loggservern genomfördes följande sökning:
+
+text
+full_log:"SELinux is preventing"
+
+
+Sökningen inom de senaste sju dagarna gav inga träffar.
+
+Det innebär att det inte har kunnat verifieras att setroubleshoot-meddelanden når Wazuh.
+
+Den råa AVC-loggningen fungerar däremot och har verifierats från elev-37. Det återstår att undersöka om setroubleshoot genererar meddelanden lokalt och om dessa skickas vidare via syslog.
+
+## Jämförelse med lokal auditlogg
+
+En AVC-händelse innehåller ett audit-serienummer i fältet:
+
+text
+msg=audit(tidsstämpel:serienummer)
+
+
+Serienumret används för att jämföra händelsen i Wazuh med motsvarande post i klientens lokala /var/log/audit/audit.log.
+
+Exempel på lokal kontroll:
+
+bash
+sudo ausearch -m AVC -ts recent
+
+
+En fullständig jämförelse mellan lokal auditlogg och Wazuh har inte kunnat genomföras för elev-37. Verifieringen baseras därför på de händelser som har kunnat observeras i Wazuh.
+
+## Uppföljning av härdningsåtgärder
+
+Följande kontroller används för att följa upp härdningen:
+
+Härdningsåtgärd	Uppföljning
+SELinux-filkontexter	AVC-händelser kontrolleras i Wazuh
+Behörigheter på filer och kataloger	SELinux-nekanden och relevanta logghändelser följs upp
+Loggfiler	Kontroll av åtkomst och eventuella SELinux-nekanden
+zonvakt-processen	Sökning med comm=zonvakt
+Central loggning	Kontroll att AVC-händelser når loggservern
+Wazuh-regler	Kontroll av regel-ID och allvarlighetsnivå
+
+Vid ändringar av filkontexter, exempelvis med semanage fcontext och restorecon, bör loggarna följas upp för att upptäcka eventuella nya åtkomstnekanden.
+
+Det är särskilt viktigt att kontrollera att filkontexterna fortfarande är korrekta efter en relabel.
+
+## Resultat av verifieringen
+### Kontroll	Resultat
+Rå AVC-händelse från elev-37 når Wazuh - Verifierat
+audisp-syslog identifieras som källa - Verifierat
+Händelser lagras under elev-37 i central loggning - Verifierat
+Kursens regel 100200 träffar - Verifierat
+Regel 100200 har nivå 5 - Verifierat
+Automatisk e-postavisering - Inte aktiverad enligt verifierad händelse
+Setroubleshoot-meddelanden når Wazuh - Inte verifierat
+Lokal jämförelse av audit-serienummer - Återstår
+Alerting-monitor och brusmätning - Inte verifierat
+
+## Slutsats
+
+Den centrala loggningen används både för driftövervakning och för uppföljning av säkerhetshärdningen.
+
+Verifieringen visar att råa SELinux AVC-händelser från elev-37 når Wazuh via audisp-syslog och identifieras av kursens regel 100200 på nivå 5.
+
+Det går därmed att använda den centrala loggningen för att upptäcka och följa upp SELinux-nekanden som kan bero på felaktiga filkontexter eller behörigheter.
+
+Setroubleshoot-meddelanden har däremot inte kunnat hittas i Wazuh. Den delen av loggkedjan återstår att verifiera.
