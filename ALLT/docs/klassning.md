@@ -45,19 +45,19 @@
 **Varför zonen finns:** Loggar är en bevis på vad händer i systemet och måste gå att lita på. Logg tar bara emotloggar på 6514 TCP, med TLS (F7) och förvaltning från jump (F4 F5). Logg ansluter alrig till nån annan zon
 
 -----------------------------------------------
-### Applikations- och driftservrar (Server, 10.40.1.64/27)
+### Applikations och driftservrar (Server, 10.40.1.64/27)
 
-**Funktion:** 
+**Funktion:** Server är mellan lagret mellan portalen och DBn. Portalen frågar appen om kundens ordrar (F8) och appen skriver data i DBn (F9). Servrarna förvaltas från jump (F6)
 
 | | Nivå | Motivering |
 |---|---|---|
-| **K** |  |  |
-| **R** |  |  |
-| **T** |  |  |
+| **K** | H | Eftersom appen har formodligen lösenorder till DBn för att kunna logga in (F9) om nån skulle läsa appserverns config får nyckeln till all kunddata|
+| **R** | H | Om appen skulle ändras, den kan då skriva fel data i DBn eller visa kunderna fel ordrar |
+| **T** | H | Ligger appen nere kan portalen inte visa några ordrar och inget sparas, kundtjänsten stannar också |
 
-**Skyddsklass:** 
+**Skyddsklass:** Hög
 
-**Varför zonen finns:**
+**Varför zonen finns:** Serevr zonen är en till buffer zon mellan internet och DB. DMZ får bara nå appen på enda port (F8) och bara appen får nå DBn (F9)
 
 -----------------------------------------------
 ### Företagsdatabas (Data, 10.40.1.112/29)
@@ -81,44 +81,44 @@ för administration (F6) får nå databasen.
 -----------------------------------------------
 ### Klientdatorer  (Klient , 10.40.0.0/24)
 
-**Funktion:** 
+**Funktion:** Klientzonen är för personalens datorer ingen annan zon får anlusta till klient. Personalen kan andvända webbtjänsten i DMZ (F!0) och websurfning (F12ab) och skickar loggar (F7)
 
 | | Nivå | Motivering |
 |---|---|---|
-| **K** |  |  |
-| **R** |  |  |
-| **T** |  |  |
+| **K** | Medel | I klient zonen finns personalens data som epost deras dokument etc som inte är publika men det viktigaste som är gäst data ligger i DB inte i klient zonen därför får den Medel |
+| **R** | Medel | Om klient blir ändrad av en angripare t.ex, drabbar det oftast bara en av peronalens dator |
+| **T** | Medel | Medel: Ligger en klient nere kan en anställd inte arbeta. Ligger många nere stannar personalens arbete, men kundernas tjänster – webbplatsen och portalen – fortsätter att fungera |
 
-**Skyddsklass:** 
+**Skyddsklass:** Medel
 
-**Varför zonen finns:**
+**Varför zonen finns:** Personalen surfar fritt på internet och det kan då bli den mest sannolika vägen in för en angripare därför ligger Klient i en egen zon. Klienter får nå DMZ och interent men servrar loggar. Ingen zon får ansluta till klienterna. En kapad klientdator når alltså inte de viktiga systemen
 
 -----------------------------------------------
 ### Gästnät (Gäst, 10.40.1.0/26)
 
-**Funktion:** 
+**Funktion:**  Zonen för besökarna att surfa på internet (F12ab) och den når ingen intern zon. Också den enda zonen som inte skickar loggar (-F7-) 
 
 | | Nivå | Motivering |
 |---|---|---|
-| **K** |  |  |
-| **R** |  |  |
-| **T** |  |  |
+| **K** | Låg | Gästnättet innehåller ingen av företagets info bara besökarnas egan enheter |
+| **R** | Låg | Ändras något i gästnättet drabar det bara besökarens egen enhet. |
+| **T** | Låg | Om gästnättet är nere drabbas bara gäster som inte kan surfa längre men det drabar inga interna zoner |
 
-**Skyddsklass:** 
+**Skyddsklass:** Låg
 
-**Varför zonen finns:**
+**Varför zonen finns:** Gästernas enheter är okända och opålitliga därför är gäst i en egen zon helt isolerad och är den ända zonen som inte skickar loggar. Skyddkslassen är låg från företagets perspektiv eftersom det viktigaste för företaget är de interna zoner
 
 -----------------------------------------------
-### Transit (Zon, 10.40.1.136–.147 (Länk 1–3))
+### Nätverkskonfiguration  (Transit, 10.40.1.136–.147 (Länk 1–3))
 
-**Funktion:** 
+**Funktion:** Länkar mellan routrarna/brandväggen. All trafik mellan alla zoner går igenom Transit och det är där flödesregler tillämps
 
 | | Nivå | Motivering |
 |---|---|---|
-| **K** |  |  |
-| **R** |  |  |
-| **T** |  |  |
+| **K** | H | Nätverkskonfigurationen är som en karta över hela företags nätet om någon skulle se den kan dem enkelt  visualisera hur alla zoner ser ur och se adresser portar som finns den kan visa en angripare vägar in etc |
+| **R** | H| Om nätverkskonfigurationens regler ändras kan hela zonindelningen kringgås bara en regeländring som DB får nå internet och hela skyddet run DBn försvinner |
+| **T** | H | Utan transit ingen kan nå något annat |
 
-**Skyddsklass:** 
+**Skyddsklass:** Hög
 
-**Varför zonen finns:**
+**Varför zonen finns:** Regeler som skyddar och separerar zoner måste själva bli skyddade om vem som helst kan ändra regler som finns mellan zoner kan de kringgå alla regler som var där från början. Därför ligger routerlänkarna i en egen zon som bara routrarna når, och de konfigureras bara från Admin
