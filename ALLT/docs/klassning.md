@@ -2,7 +2,7 @@
 -----------------------------------------------
 ### Elevservrar (DMZ, 10.40.1.128/29)
 
-**Funktion:** DMZ är publika tjänsten, webbplatnse och portalen som besökarna och kunder når från internet (F1) den också visar kundernas ordrar (F8)
+**Funktion:** DMZ är publika tjänsten, webbplatnse och portalen som besökarna och kunder når från internet (F1) Personalen använder samma webbtjänst (F10) Portalen  också visar kundernas ordrar (F8)
 
 | | Nivå | Motivering |
 |---|---|---|
@@ -12,7 +12,7 @@
 
 **Skyddsklass:** Hög
 
-**Varför zonen finns:** den ända zonen som får nå internet är DMZ (F1). Alla andra zoner är interna och år inte nås utifrån därför behöver DMZ vara i sin egen zon bort från alla de andra. DMZ är typ en "buffer zon" så at en övertagen server inne kan inte gå vidare. Bara F8 och F3 (ssh och server) kan interagera med DMZ
+**Varför zonen finns:** den vem som helst på internet får ansluta till (F1). Alla andra zoner är interna och år inte nås utifrån därför behöver DMZ vara i sin egen zon bort från alla de andra. DMZ är en av två buffer zoner så at en övertagen server inne kan inte gå vidare
 
 -----------------------------------------------
 ### Jump (Admin, 10.40.1.96/28)
